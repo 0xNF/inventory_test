@@ -185,9 +185,27 @@ function renderInventoryItems() {
             const item = inventoryItems.find(item => item.id === itemId);
             
             if (item) {
+                // Format date and price for display
+                const purchaseDate = item.acquired_date ? new Date(item.acquired_date).toLocaleDateString() : 'N/A';
+                const price = item.purchase_price ?
+                    new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: item.purchase_currency || 'JPY'
+                    }).format(item.purchase_price) : 'N/A';
+
+                // Update all modal fields
+                document.getElementById('modal-id').textContent = item.id;
+                document.getElementById('modal-name').textContent = item.name;
+                document.getElementById('modal-acquired-date').textContent = purchaseDate;
+                document.getElementById('modal-purchase-price').textContent = price;
+                document.getElementById('modal-purchase-currency').textContent = item.purchase_currency || 'N/A';
                 document.getElementById('modal-purchase-ref').textContent = item.purchase_reference || 'N/A';
                 document.getElementById('modal-received-from').textContent = item.received_from || 'N/A';
                 document.getElementById('modal-serial-number').textContent = item.serial_number || 'N/A';
+                document.getElementById('modal-is-used').textContent = item.is_used ? 'Yes' : 'No';
+                document.getElementById('modal-future-purchase').textContent = item.future_purchase ? 'Yes' : 'No';
+                document.getElementById('modal-notes').textContent = item.notes || 'N/A';
+
                 document.getElementById('info-modal').style.display = 'block';
             }
         });
@@ -202,9 +220,15 @@ function renderInventoryItems() {
         });
     }
 
-    // Close modal when clicking outside
+    // Close modal when clicking outside or pressing Escape
     window.addEventListener('click', (event) => {
         if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+
+    window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && modal.style.display === 'block') {
             modal.style.display = 'none';
         }
     });
