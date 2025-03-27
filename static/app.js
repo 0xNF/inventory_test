@@ -1,4 +1,26 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Tab switching functionality
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            // Remove active class from all buttons and sections
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabContents.forEach(content => content.style.display = 'none');
+            
+            // Add active class to clicked button
+            button.classList.add('active');
+            
+            // Show corresponding content
+            const tabId = button.getAttribute('data-tab');
+            document.getElementById(tabId + '-section').style.display = 'block';
+        });
+    });
+
+    // Show default tab (list)
+    document.querySelector('.tab-button[data-tab="list"]').click();
+
     // DOM elements
     const inventoryTable = document.getElementById('inventory-items');
     const addItemForm = document.getElementById('add-item-form');

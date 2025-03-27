@@ -5,17 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventory Manager</title>
     <link rel="stylesheet" href="styles.css">
-    <style>
-        .pagination-button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-        .pagination-button:disabled:hover {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-    </style>
 </head>
 <body>
     <div class="container">
@@ -23,7 +12,12 @@
             <h1>Inventory Manager</h1>
         </header>
         
-        <section class="add-item-section">
+        <div class="tab-controls">
+            <button class="tab-button active" data-tab="list">List Items</button>
+            <button class="tab-button" data-tab="add">Add Item</button>
+        </div>
+
+        <section id="add-section" class="add-item-section tab-content" style="display: none;">
             <h2>Add New Item</h2>
             <form id="add-item-form">
                 <div class="form-group">
@@ -62,7 +56,7 @@
             </form>
         </section>
 
-        <section class="inventory-section">
+        <section id="list-section" class="inventory-section tab-content">
             <h2>Inventory Items</h2>
             <div class="filter-controls">
                 <div class="sort-controls">
