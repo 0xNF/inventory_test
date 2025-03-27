@@ -1,0 +1,45 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Add Item",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=inventory_manager_rs",
+                    "--package=inventory_manager_rs"
+                ],
+                "filter": {
+                    "name": "inventory_manager_rs",
+                    "kind": "bin"
+                }
+            },
+            "args": ["add",  "--json", "\"{\\\"name\\\":\\\"test2\\\",\\\"acquired_date\\\":null,\\\"purchase_price\\\":null,\\\"purchase_currency\\\":\\\"USD\\\",\\\"purchase_reference\\\":null,\\\"is_used\\\":false,\\\"future_purchase\\\":false,\\\"notes\\\":null}\""],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'inventory_manager_rs'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=inventory_manager_rs",
+                    "--package=inventory_manager_rs"
+                ],
+                "filter": {
+                    "name": "inventory_manager_rs",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
