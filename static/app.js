@@ -98,7 +98,39 @@ document.addEventListener('DOMContentLoaded', function() {
         loadInventoryItems();
     }
     
-    function renderInventoryItems() {
+    function setupInfoIconListeners() {
+    const modal = document.getElementById('info-modal');
+    const span = document.getElementsByClassName('close')[0];
+    
+    // Add click event to all info icons
+    document.querySelectorAll('.info-icon').forEach(icon => {
+        icon.addEventListener('click', (e) => {
+            const itemId = e.target.getAttribute('data-id');
+            const item = inventoryItems.find(item => item.id === itemId);
+            
+            if (item) {
+                document.getElementById('modal-purchase-ref').textContent = item.purchase_reference || 'N/A';
+                document.getElementById('modal-received-from').textContent = item.received_from || 'N/A';
+                document.getElementById('modal-serial-number').textContent = item.serial_number || 'N/A';
+                modal.style.display = 'block';
+            }
+        });
+    });
+    
+    // Close modal when clicking (x)
+    span.onclick = function() {
+        modal.style.display = 'none';
+    }
+    
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    }
+}
+
+function renderInventoryItems() {
         // Clear the table
         inventoryTable.innerHTML = '';
         
@@ -124,7 +156,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 'N/A';
             
             row.innerHTML = `
-                <td>${item.id}</td>
+                <td>
+                    <span class="info-icon" data-id="${item.id}">ℹ️</span>
+                    ${item.id}
+                </td>
                 <td>${item.name}</td>
                 <td>${purchaseDate}</td>
                 <td>${price}</td>
@@ -138,10 +173,44 @@ document.addEventListener('DOMContentLoaded', function() {
             inventoryTable.appendChild(row);
         });
         
-        // Add event listeners to delete buttons
+        // Add event listeners to delete buttons and info icons
         document.querySelectorAll('.delete-btn').forEach(button => {
-            button.addEventListener('click', handleDeleteItem);
+        button.addEventListener('click', handleDeleteItem);
         });
+
+    // Add info icon listeners
+    document.querySelectorAll('.info-icon').forEach(icon => {
+        icon.addEventListener('click', (e) => {
+            const itemId = e.target.getAttribute('data-id');
+            const item = inventoryItems.find(item => item.id === itemId);
+            
+            if (item) {
+                document.getElementById('modal-purchase-ref').textContent = item.purchase_reference || 'N/A';
+                document.getElementById('modal-received-from').textContent = item.received_from || 'N/A';
+                document.getElementById('modal-serial-number').textContent = item.serial_number || 'N/A';
+                document.getElementById('info-modal').style.display = 'block';
+            }
+        });
+    });
+
+    // Add modal close button listener
+    const modal = document.getElementById('info-modal');
+    const closeBtn = modal.querySelector('.close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+    }
+
+    // Close modal when clicking outside
+    window.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+
+        // Setup info icon listeners
+        setupInfoIconListeners();
     }
     
     function handleAddItem(event) {
