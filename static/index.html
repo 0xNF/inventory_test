@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Manager</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .pagination-button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .pagination-button:disabled:hover {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Inventory Manager</h1>
+        </header>
+        
+        <section class="add-item-section">
+            <h2>Add New Item</h2>
+            <form id="add-item-form">
+                <div class="form-group">
+                    <label for="item-name">Item Name:</label>
+                    <input type="text" id="item-name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="date-purchased">Date Purchased:</label>
+                    <input type="date" id="date-purchased" name="date_purchased">
+                </div>
+                <div class="form-group">
+                    <label for="purchase-price">Purchase Price:</label>
+                    <input type="number" id="purchase-price" name="purchase_price" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label for="purchase-currency">Currency:</label>
+                    <input type="text" id="purchase-currency" name="purchase_currency" value="USD">
+                </div>
+                <div class="form-group">
+                    <label for="purchase-ref">Purchase Reference:</label>
+                    <input type="text" id="purchase-ref" name="purchase_ref">
+                </div>
+                <div class="form-group checkbox">
+                    <input type="checkbox" id="is-used" name="is_used">
+                    <label for="is-used">Used Item</label>
+                </div>
+                <div class="form-group checkbox">
+                    <input type="checkbox" id="future-purchase" name="future_purchase">
+                    <label for="future-purchase">Future Purchase</label>
+                </div>
+                <div class="form-group">
+                    <label for="notes">Notes:</label>
+                    <textarea id="notes" name="notes"></textarea>
+                </div>
+                <button type="submit">Add Item</button>
+            </form>
+        </section>
+
+        <section class="inventory-section">
+            <h2>Inventory Items</h2>
+            <div class="filter-controls">
+                <div class="sort-controls">
+                    <label for="sort-by">Sort by:</label>
+                    <select id="sort-by">
+                        <option value="name">Name</option>
+                        <option value="acquireddate">Date Purchased</option>
+                        <option value="purchaseprice">Price</option>
+                    </select>
+                    <button id="sort-asc" class="sort-btn active">↑</button>
+                    <button id="sort-desc" class="sort-btn">↓</button>
+                </div>
+                <div class="search-controls">
+                    <input type="text" id="search" placeholder="Search...">
+                </div>
+            </div>
+            <div class="inventory-table-container">
+                <table id="inventory-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Date Purchased</th>
+                            <th>Price</th>
+                            <th>Used</th>
+                            <th>Future</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventory-items">
+                        <!-- Items will be populated here dynamically -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination-controls">
+                <button id="prev-page" class="pagination-button" disabled>Previous</button>
+                <span id="page-info">Page 1</span>
+                <button id="next-page" class="pagination-button">Next</button>
+                <select id="items-per-page">
+                    <option value="10">10 per page</option>
+                    <option value="25">25 per page</option>
+                    <option value="50">50 per page</option>
+                    <option value="100">100 per page</option>
+                </select>
+            </div>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
