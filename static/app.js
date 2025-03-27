@@ -82,17 +82,23 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function updatePaginationControls() {
         const totalPages = Math.ceil(totalItems / itemsPerPage);
-        const paginationControls = document.querySelector('.pagination-controls');
+        const navigationButtons = document.querySelectorAll('.pagination-button');
+        const pageInfoSpan = document.getElementById('page-info');
         
-        // Hide pagination controls if total items is less than or equal to items per page
+        // Only hide navigation buttons and page info if all items fit on one page
         if (totalItems <= itemsPerPage) {
-            paginationControls.style.display = 'none';
+            navigationButtons.forEach(btn => btn.style.display = 'none');
+            pageInfoSpan.style.display = 'none';
         } else {
-            paginationControls.style.display = 'flex';
+            navigationButtons.forEach(btn => btn.style.display = 'inline-block');
+            pageInfoSpan.style.display = 'inline';
             prevPageButton.disabled = currentPage === 1;
             nextPageButton.disabled = currentPage === totalPages;
             pageInfo.textContent = `Page ${currentPage} of ${totalPages} (${totalItems} items)`;
         }
+        
+        // Items per page dropdown should always be visible
+        document.getElementById('items-per-page').style.display = 'inline-block';
     }
     
     function changePage(delta) {
