@@ -171,12 +171,12 @@ tr:hover {
     font-size: 14px;
 }
 
-.delete-btn {
-    background-color: #e74c3c;
+.edit-btn {
+    background-color: #2ecc71;
 }
 
-.delete-btn:hover {
-    background-color: #c0392b;
+.edit-btn:hover {
+    background-color: #27ae60;
 }
 
 /* Modal styles */

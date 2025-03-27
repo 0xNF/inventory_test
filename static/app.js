@@ -180,7 +180,7 @@ function renderInventoryItems() {
                 <td>${item.is_used ? 'Yes' : 'No'}</td>
                 <td>${item.future_purchase ? 'Yes' : 'No'}</td>
                 <td>
-                    <button class="action-btn delete-btn" data-id="${item.id}">Delete</button>
+                <button class="action-btn edit-btn" data-id="${item.id}">Edit</button>
                 </td>
             `;
             
@@ -188,8 +188,8 @@ function renderInventoryItems() {
         });
         
         // Add event listeners to delete buttons and info icons
-        document.querySelectorAll('.delete-btn').forEach(button => {
-        button.addEventListener('click', handleDeleteItem);
+        document.querySelectorAll('.edit-btn').forEach(button => {
+            button.addEventListener('click', handleEditItem);
         });
 
     // Add info icon listeners
@@ -294,34 +294,86 @@ function renderInventoryItems() {
         });
     }
     
-    function handleDeleteItem(event) {
+    function handleEditItem(event) {
         const id = event.target.getAttribute('data-id');
         const item = inventoryItems.find(item => item.id === id);
         
-        if (confirm(`Are you sure you want to delete this item?\n\nID: ${id}\nName: ${item.name}`)) {
-            fetch('/api/items/remove', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ id: id })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to delete item');
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('Item deleted successfully:', data);
-                showNotification('Item deleted successfully', 'success');
-                loadInventoryItems();
-            })
-            .catch(error => {
-                console.error('Error deleting item:', error);
-                showNotification('Error deleting item', 'error');
-            });
+        if (item) {
+            // Populate the edit form
+            document.getElementById('edit-item-id').value = item.id;
+            document.getElementById('edit-item-name').value = item.name || '';
+            document.getElementById('edit-date-purchased').value = item.acquired_date || '';
+            document.getElementById('edit-purchase-price').value = item.purchase_price || '';
+            document.getElementById('edit-purchase-currency').value = item.purchase_currency || 'USD';
+            document.getElementById('edit-purchase-ref').value = item.purchase_reference || '';
+            document.getElementById('edit-is-used').checked = item.is_used || false;
+            document.getElementById('edit-future-purchase').checked = item.future_purchase || false;
+            document.getElementById('edit-notes').value = item.notes || '';
+            
+            // Show the modal
+            document.getElementById('edit-modal').style.display = 'block';
         }
+    }
+
+    // Add edit form submit handler
+    document.getElementById('edit-item-form').addEventListener('submit', handleEditFormSubmit);
+
+    // Add edit modal close button handler
+    const editModal = document.getElementById('edit-modal');
+    const editCloseBtn = editModal.querySelector('.close');
+    if (editCloseBtn) {
+        editCloseBtn.addEventListener('click', () => {
+            editModal.style.display = 'none';
+        });
+    }
+
+    // Close edit modal when clicking outside
+    window.addEventListener('click', (event) => {
+        if (event.target === editModal) {
+            editModal.style.display = 'none';
+        }
+    });
+
+    function handleEditFormSubmit(event) {
+        event.preventDefault();
+        
+        const id = document.getElementById('edit-item-id').value;
+        
+        // Create JSON object from form data
+        const itemData = {
+            name: document.getElementById('edit-item-name').value,
+            acquired_date: document.getElementById('edit-date-purchased').value || null,
+            purchase_price: parseFloat(document.getElementById('edit-purchase-price').value) || null,
+            purchase_currency: document.getElementById('edit-purchase-currency').value || null,
+            purchase_reference: document.getElementById('edit-purchase-ref').value || null,
+            is_used: document.getElementById('edit-is-used').checked,
+            future_purchase: document.getElementById('edit-future-purchase').checked,
+            notes: document.getElementById('edit-notes').value || null
+        };
+        
+        // Send data to server
+        fetch(`/api/items/edit/${id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(itemData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to edit item');
+            }
+            return response.json();
+        })
+        .then(data => {
+            showNotification('Item updated successfully', 'success');
+            document.getElementById('edit-modal').style.display = 'none';
+            loadInventoryItems();
+        })
+        .catch(error => {
+            console.error('Error editing item:', error);
+            showNotification('Error updating item', 'error');
+        });
     }
     
     function filterItems() {
