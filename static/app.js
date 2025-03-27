@@ -82,9 +82,17 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function updatePaginationControls() {
         const totalPages = Math.ceil(totalItems / itemsPerPage);
-        prevPageButton.disabled = currentPage === 1;
-        nextPageButton.disabled = currentPage === totalPages;
-        pageInfo.textContent = `Page ${currentPage} of ${totalPages} (${totalItems} items)`;
+        const paginationControls = document.querySelector('.pagination-controls');
+        
+        // Hide pagination controls if total items is less than or equal to items per page
+        if (totalItems <= itemsPerPage) {
+            paginationControls.style.display = 'none';
+        } else {
+            paginationControls.style.display = 'flex';
+            prevPageButton.disabled = currentPage === 1;
+            nextPageButton.disabled = currentPage === totalPages;
+            pageInfo.textContent = `Page ${currentPage} of ${totalPages} (${totalItems} items)`;
+        }
     }
     
     function changePage(delta) {
