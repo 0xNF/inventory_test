@@ -282,8 +282,9 @@ function renderInventoryItems() {
     
     function handleDeleteItem(event) {
         const id = event.target.getAttribute('data-id');
+        const item = inventoryItems.find(item => item.id === id);
         
-        if (confirm('Are you sure you want to delete this item?')) {
+        if (confirm(`Are you sure you want to delete this item?\n\nID: ${id}\nName: ${item.name}`)) {
             fetch('/api/items/remove', {
                 method: 'POST',
                 headers: {
