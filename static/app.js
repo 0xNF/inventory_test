@@ -169,12 +169,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const id = event.target.getAttribute('data-id');
         
         if (confirm('Are you sure you want to delete this item?')) {
-            const formData = new FormData();
-            formData.append('id', id);
-            
             fetch('/api/items/remove', {
                 method: 'POST',
-                body: formData
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id: id })
             })
             .then(response => {
                 if (!response.ok) {

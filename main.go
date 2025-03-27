@@ -164,21 +164,23 @@ func handleRemoveItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse the form data
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Failed to parse form data: "+err.Error(), http.StatusBadRequest)
+	// Parse JSON body
+	var data struct {
+		ID string `json:"id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		http.Error(w, "Failed to parse JSON: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Get the ID from the form data
-	id := r.FormValue("id")
-	if id == "" {
-		http.Error(w, "ID is required", http.StatusBadRequest)
+	// Validate ID
+	if data.ID == "" {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
 		return
 	}
 
 	// Execute the inventory_manager_rs remove command
-	output, err := prog.delete(id)
+	output, err := prog.delete(data.ID)
 	if err != nil {
 		http.Error(w, "Failed to remove item: "+err.Error(), http.StatusInternalServerError)
 		return
