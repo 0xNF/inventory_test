@@ -24,6 +24,9 @@ enum Commands {
 
     /// Remove an inventory item by ID
     Remove(RemoveArgs),
+
+    /// Edit an existing inventory item
+    Edit(EditArgs),
 }
 
 #[derive(Debug, Serialize)]
@@ -104,12 +107,28 @@ struct RemoveArgs {
     json: bool,
 }
 
-/// Represents an inventory item
-#[derive(Serialize, Deserialize)]
+#[derive(Args)]
+struct EditArgs {
+    /// ID of the item to edit
+    #[arg(required = true)]
+    id: String,
+
+    /// JSON string containing fields to update
+    #[arg(long = "input", required = true)]
+    input: String,
+
+    /// Output in JSON format
+    #[arg(long, default_value_t = false)]
+    json: bool,
+}
+
+/// Represents a new inventory item with required name
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct InventoryItem {
     #[serde(default)]
     id: String,
-    name: String,
+    name: String,  // Required for new items
     acquired_date: Option<String>,
     purchase_price: Option<i64>,
     purchase_currency: Option<String>,
@@ -148,12 +167,46 @@ fn main() -> SqliteResult<()> {
         Commands::Remove(args) => {
             remove_inventory_item(&conn, &args.id, args.json)?;
         }
+        Commands::Edit(args) => {
+            edit_inventory_item(&conn, &args.id, &args.input, args.json)?;
+        }
     }
 
     Ok(())
 }
 
 // Data structure for short inventory items
+/// Represents an editable item where all fields are optional
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct EditableItem {
+    #[serde(default)]
+    #[serde(skip_serializing)]
+    id: String,
+    #[serde(default)]
+    name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    acquired_date: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    purchase_price: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    purchase_currency: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    is_used: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    received_from: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    serial_number: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    purchase_reference: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    notes: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    extra: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    future_purchase: Option<bool>,
+}
+
 #[derive(Serialize)]
 struct ShortInventoryItem {
     id: String,
@@ -700,4 +753,128 @@ fn print_removal_result(result: &RemovalResult, json: bool) -> SqliteResult<()> 
 fn remove_inventory_item(conn: &Connection, id: &str, json: bool) -> SqliteResult<()> {
     let result = delete_inventory_item(conn, id)?;
     print_removal_result(&result, json)
+}
+
+#[derive(Serialize)]
+struct EditResult {
+    success: bool,
+    item_id: String,
+    message: String,
+}
+
+fn edit_inventory_item(
+    conn: &Connection,
+    id: &str,
+    json_input: &str,
+    json_output: bool,
+) -> SqliteResult<()> {
+    // First verify the item exists
+    let mut stmt = conn.prepare("SELECT Name FROM inventory WHERE Id = ?1")?;
+    let name: Option<String> = stmt.query_row([id], |row| row.get(0)).optional()?;
+
+    if name.is_none() {
+        let result = EditResult {
+            success: false,
+            item_id: id.to_string(),
+            message: format!("No item found with ID: {}", id),
+        };
+        return print_edit_result(&result, json_output);
+    }
+
+    // Parse the JSON input for editable item
+    let updates: EditableItem = serde_json::from_str(json_input)
+        .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
+
+    // Build the UPDATE query dynamically based on which fields are present
+    let mut query = String::from("UPDATE inventory SET ");
+    let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+    let mut set_clauses = Vec::new();
+
+    if !updates.name.is_empty() {
+        set_clauses.push("Name = ?");
+        params.push(Box::new(updates.name.clone()));
+    }
+    if updates.acquired_date.is_some() {
+        set_clauses.push("AcquiredDate = ?");
+        params.push(Box::new(updates.acquired_date));
+    }
+    if updates.purchase_price.is_some() {
+        set_clauses.push("PurchasePrice = ?");
+        params.push(Box::new(updates.purchase_price));
+    }
+    if updates.purchase_currency.is_some() {
+        set_clauses.push("PurchaseCurrency = ?");
+        params.push(Box::new(updates.purchase_currency));
+    }
+    if updates.is_used.is_some() {
+        set_clauses.push("IsUsed = ?");
+        params.push(Box::new(updates.is_used.map(|v| v as i64)));
+    }
+    if updates.received_from.is_some() {
+        set_clauses.push("ReceivedFrom = ?");
+        params.push(Box::new(updates.received_from));
+    }
+    if updates.serial_number.is_some() {
+        set_clauses.push("SerialNumber = ?");
+        params.push(Box::new(updates.serial_number));
+    }
+    if updates.purchase_reference.is_some() {
+        set_clauses.push("PurchaseReference = ?");
+        params.push(Box::new(updates.purchase_reference));
+    }
+    if updates.notes.is_some() {
+        set_clauses.push("Notes = ?");
+        params.push(Box::new(updates.notes));
+    }
+    if updates.extra.is_some() {
+        set_clauses.push("Extra = ?");
+        params.push(Box::new(updates.extra));
+    }
+    if updates.future_purchase.is_some() {
+        set_clauses.push("FuturePurchase = ?");
+        params.push(Box::new(updates.future_purchase.map(|v| v as i64)));
+    }
+
+    if set_clauses.is_empty() {
+        let result = EditResult {
+            success: false,
+            item_id: id.to_string(),
+            message: "No fields to update".to_string(),
+        };
+        return print_edit_result(&result, json_output);
+    }
+
+    query.push_str(&set_clauses.join(", "));
+    query.push_str(" WHERE Id = ?");
+    params.push(Box::new(id));
+
+    // Execute the update
+    let mut stmt = conn.prepare(&query)?;
+    let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+    let updated = stmt.execute(param_refs.as_slice())?;
+
+    let result = EditResult {
+        success: updated > 0,
+        item_id: id.to_string(),
+        message: if updated > 0 {
+            format!("Successfully updated item with ID: {}", id)
+        } else {
+            format!("Failed to update item with ID: {}", id)
+        },
+    };
+
+    print_edit_result(&result, json_output)
+}
+
+fn print_edit_result(result: &EditResult, json: bool) -> SqliteResult<()> {
+    if json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&result)
+                .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?
+        );
+    } else {
+        println!("{}", result.message);
+    }
+    Ok(())
 }
