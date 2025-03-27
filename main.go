@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os/exec"
+	"strings"
 )
 
 type InventoryItem struct {
@@ -38,6 +39,20 @@ type InventoryProg struct {
 	path string
 }
 
+type EditItemRequest struct {
+	Name             string   `json:"name,omitempty"`
+	AcquiredDate     string   `json:"acquired_date,omitempty"`
+	PurchasePrice    float64  `json:"purchase_price,omitempty"`
+	PurchaseCurrency string   `json:"purchase_currency,omitempty"`
+	IsUsed           bool     `json:"is_used,omitempty"`
+	ReceivedFrom     string   `json:"received_from,omitempty"`
+	SerialNumber     string   `json:"serial_number,omitempty"`
+	PurchaseReference string  `json:"purchase_reference,omitempty"`
+	Notes            string   `json:"notes,omitempty"`
+	Extra            string   `json:"extra,omitempty"`
+	FuturePurchase   bool     `json:"future_purchase,omitempty"`
+}
+
 func (p *InventoryProg) list(limit, offset *uint32, sortBy string, orderBy string) ([]byte, error) {
 	args := []string{"list", "--long", "--json"}
 
@@ -68,6 +83,11 @@ func (p *InventoryProg) delete(id string) ([]byte, error) {
 	return cmd.Output()
 }
 
+func (p *InventoryProg) edit(id string, itemData []byte) ([]byte, error) {
+	cmd := exec.Command(p.path, "edit", id, "--input", string(itemData), "--json")
+	return cmd.CombinedOutput()
+}
+
 var prog InventoryProg
 
 func main() {
@@ -83,6 +103,7 @@ func main() {
 	http.HandleFunc("/api/items", handleItems)
 	http.HandleFunc("/api/items/add", handleAddItem)
 	http.HandleFunc("/api/items/remove", handleRemoveItem)
+	http.HandleFunc("/api/items/edit/", handleEditItem)
 
 	// Start the server
 	fmt.Println("Starting server at http://localhost:8080")
@@ -156,6 +177,47 @@ func handleAddItem(w http.ResponseWriter, r *http.Request) {
 		"message": "Item added successfully",
 		"output":  string(output),
 	})
+}
+
+func handleEditItem(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get the item ID from the URL
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 4 {
+		http.Error(w, "Invalid URL", http.StatusBadRequest)
+		return
+	}
+	itemID := parts[len(parts)-1]
+
+	// Parse the request body
+	var editReq EditItemRequest
+	if err := json.NewDecoder(r.Body).Decode(&editReq); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Convert the edit request to JSON
+	editJSON, err := json.Marshal(editReq)
+	if err != nil {
+		http.Error(w, "Error creating edit request", http.StatusInternalServerError)
+		return
+	}
+
+	// Execute the edit command
+	output, err := prog.edit(itemID, editJSON)
+	if err != nil {
+		log.Printf("Error executing edit command: %v\nOutput: %s", err, output)
+		http.Error(w, "Error editing item", http.StatusInternalServerError)
+		return
+	}
+
+	// Set response headers and return output
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(output)
 }
 
 func handleRemoveItem(w http.ResponseWriter, r *http.Request) {
