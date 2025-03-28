@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use std::io::{self, Write};
 use uuid::Uuid;
+mod regex_rust;
 
 /// Inventory Manager - A CLI tool to manage inventory items
 #[derive(Parser)]
@@ -75,6 +76,14 @@ struct ListArgs {
     /// Fields to sort by, in order of priority (can be specified multiple times)
     #[arg(long, value_delimiter = ',')]
     sort_by: Option<Vec<String>>,
+
+    /// Regular expression to filter results by
+    #[arg(long)]
+    filter: Option<String>,
+
+    /// Comma-separated list of fields to filter on
+    #[arg(long, value_delimiter = ',')]
+    fields: Option<Vec<String>>,
 }
 
 #[derive(Args)]
@@ -146,6 +155,9 @@ fn main() -> SqliteResult<()> {
 
     // Connect to the database
     let conn = Connection::open("../inventory.db")?;
+
+    // Add the REGEXP function
+    regex_rust::add_regexp_function(&conn)?;
 
     match &cli.command {
         Commands::List(args) => {
@@ -236,9 +248,54 @@ fn get_short_inventory(
     conn: &Connection,
     args: &ListArgs,
 ) -> SqliteResult<PagedResponse<ShortInventoryItem>> {
-    // Get total count first
-    let total: u32 = conn.query_row("SELECT COUNT(*) FROM inventory", [], |row| row.get(0))?;
-    let mut query = String::from("SELECT Id, Name, AcquiredDate FROM inventory");
+    use regex::Regex;
+
+    // Build the WHERE clause for filtering if needed
+    let mut where_conditions = Vec::new();
+    let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+
+    if let Some(filter_pattern) = &args.filter {
+        if let Ok(re) = Regex::new(filter_pattern) {
+            let filter_fields = args.fields.as_ref().map(|f| f.as_slice()).unwrap_or(&[
+                "Name",
+                "AcquiredDate",
+            ]);
+
+            let field_conditions: Vec<String> = filter_fields
+                .iter()
+                .map(|field| {
+                    params.push(Box::new(filter_pattern));
+                    format!("{} REGEXP ?", field)
+                })
+                .collect();
+
+            if !field_conditions.is_empty() {
+                where_conditions.push(format!("({})", field_conditions.join(" OR ")));
+            }
+        }
+    }
+
+    // Build the complete query
+    let where_clause = if !where_conditions.is_empty() {
+        format!(" WHERE {}", where_conditions.join(" AND "))
+    } else {
+        String::new()
+    };
+
+    // Get total count with filters applied
+    let count_query = format!(
+        "SELECT COUNT(*) FROM inventory{}",
+        where_clause
+    );
+    
+    let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+    let total: u32 = conn.query_row(
+        &count_query,
+        param_refs.as_slice(),
+        |row| row.get(0)
+    )?;
+
+    let mut query = format!("SELECT Id, Name, AcquiredDate FROM inventory{}", where_clause);
 
     // Add sorting
     query.push_str(&build_sort_clause(args));
@@ -322,14 +379,60 @@ fn get_long_inventory(
     conn: &Connection,
     args: &ListArgs,
 ) -> SqliteResult<PagedResponse<InventoryItem>> {
-    // Get total count first
-    let total: u32 = conn.query_row("SELECT COUNT(*) FROM inventory", [], |row| row.get(0))?;
-    let mut query = String::from(
+    use regex::Regex;
+
+    // Build the WHERE clause for filtering if needed
+    let mut where_conditions = Vec::new();
+    let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+
+    if let Some(filter_pattern) = &args.filter {
+        if let Ok(re) = Regex::new(filter_pattern) {
+            let filter_fields = args.fields.as_ref().map(|f| f.as_slice()).unwrap_or(&[
+                "Name", "AcquiredDate", "PurchaseCurrency", "ReceivedFrom",
+                "SerialNumber", "PurchaseReference", "Notes", "Extra"
+            ]);
+
+            let field_conditions: Vec<String> = filter_fields
+                .iter()
+                .map(|field| {
+                    params.push(Box::new(filter_pattern));
+                    format!("{} REGEXP ?", field)
+                })
+                .collect();
+
+            if !field_conditions.is_empty() {
+                where_conditions.push(format!("({})", field_conditions.join(" OR ")));
+            }
+        }
+    }
+
+    // Build the complete query
+    let where_clause = if !where_conditions.is_empty() {
+        format!(" WHERE {}", where_conditions.join(" AND "))
+    } else {
+        String::new()
+    };
+
+    // Get total count with filters applied
+    let count_query = format!(
+        "SELECT COUNT(*) FROM inventory{}",
+        where_clause
+    );
+    
+    let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+    let total: u32 = conn.query_row(
+        &count_query,
+        param_refs.as_slice(),
+        |row| row.get(0)
+    )?;
+
+    let mut query = format!(
         "SELECT 
             Id, Name, AcquiredDate, PurchasePrice, PurchaseCurrency, 
             IsUsed, ReceivedFrom, SerialNumber, PurchaseReference, 
             Notes, Extra, FuturePurchase 
-        FROM inventory",
+        FROM inventory{}",
+        where_clause
     );
 
     // Add sorting
