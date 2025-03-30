@@ -35,13 +35,13 @@ impl Config {
     pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
         // Try multiple locations in order of priority
         let config_paths = get_config_paths();
-        
+
         for path in config_paths {
             if path.exists() {
                 return Self::from_file(&path);
             }
         }
-        
+
         // Return default if no config file found
         Ok(Self::default())
     }
@@ -224,29 +224,29 @@ const FIELDS_ARR: &[&str] = &[
 /// Get the list of possible config file paths following XDG convention
 fn get_config_paths() -> Vec<PathBuf> {
     let mut paths = Vec::new();
-    
+
     // First check for environment variable
-    if let Ok(path) = std::env::var("INVENTORY_CONFIG") {
+    if let Ok(path) = std::env::var("0XNFWT_INVENTORY_CONFIG") {
         paths.push(PathBuf::from(path));
     }
-    
+
     // Then check XDG_CONFIG_HOME or ~/.config
     if let Some(config_dir) = config_dir() {
-        let xdg_path = config_dir.join("inventory").join("config.json");
+        let xdg_path = config_dir.join("0xnfwt_inventory").join("config.json");
         paths.push(xdg_path);
     }
-    
+
     // Check home directory
     if let Some(home) = home_dir() {
-        paths.push(home.join(".inventory.json"));
+        paths.push(home.join(".0xnfwt_inventory.json"));
     }
-    
+
     // Check current directory
     paths.push(PathBuf::from("config.json"));
-    
+
     // Check relative to executable
     paths.push(PathBuf::from("../config.json"));
-    
+
     paths
 }
 
