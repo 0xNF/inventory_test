@@ -37,6 +37,7 @@ impl Config {
         let config_paths = get_config_paths();
 
         for path in config_paths {
+            println!("Searching: {}", &path.to_string_lossy());
             if path.exists() {
                 return Self::from_file(&path);
             }
@@ -232,7 +233,9 @@ fn get_config_paths() -> Vec<PathBuf> {
 
     // Then check XDG_CONFIG_HOME or ~/.config
     if let Some(config_dir) = config_dir() {
-        let xdg_path = config_dir.join("0xnfwt_inventory").join("config.json");
+        let xdg_path = config_dir
+            .join("0xnfwt_inventory")
+            .join("0xnfwt_inventory.json");
         paths.push(xdg_path);
     }
 
@@ -242,10 +245,10 @@ fn get_config_paths() -> Vec<PathBuf> {
     }
 
     // Check current directory
-    paths.push(PathBuf::from("config.json"));
+    paths.push(PathBuf::from("0xnfwt_inventory.json"));
 
     // Check relative to executable
-    paths.push(PathBuf::from("../config.json"));
+    paths.push(PathBuf::from("../0xnfwt_inventory.json"));
 
     paths
 }
