@@ -40,13 +40,23 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentPage = 1;
     let itemsPerPage = 10;
     let totalItems = 0;
+    let searchTerm = '';
     
     // Load inventory items on page load
     loadInventoryItems();
     
     // Setup event listeners
     addItemForm.addEventListener('submit', handleAddItem);
-    searchInput.addEventListener('input', filterItems);
+    searchInput.addEventListener('keyup', function(event) {
+        if (event.key === 'Enter') {
+            filterItems();
+        }
+    });
+    searchInput.addEventListener('input', function() {
+        // Add debounce for live search
+        clearTimeout(searchInput.debounceTimer);
+        searchInput.debounceTimer = setTimeout(filterItems, 500);
+    });
     sortBySelect.addEventListener('change', handleSortChange);
     sortAscButton.addEventListener('click', () => setSortDirection('asc'));
     sortDescButton.addEventListener('click', () => setSortDirection('desc'));
@@ -57,7 +67,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Functions
     function loadInventoryItems() {
         const offset = (currentPage - 1) * itemsPerPage;
-        fetch(`/api/items?limit=${itemsPerPage}&offset=${offset}&sortBy=${sortField}&orderBy=${sortDirection}`)
+        let url = `/api/items?limit=${itemsPerPage}&offset=${offset}&sortBy=${sortField}&orderBy=${sortDirection}`;
+        
+        // Add search term if it exists
+        if (searchTerm) {
+            url += `&filter=${encodeURIComponent(searchTerm)}`;
+        }
+        
+        fetch(url)
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Failed to fetch inventory items');
@@ -377,7 +394,7 @@ function renderInventoryItems() {
     }
     
     function filterItems() {
-        const filterText = searchInput.value.toLowerCase();
+        searchTerm = searchInput.value.trim();
         currentPage = 1; // Reset to first page when filtering
         loadInventoryItems();
     }

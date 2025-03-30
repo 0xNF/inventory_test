@@ -36,7 +36,7 @@
                  "--offset", "0", 
                  "--sort-by", "name",
                  "--order-by", "asc",
-                 "--filter", "neil"
+                 "--filter", "43"
                 ],
             "cwd": "${workspaceFolder}/rs"
         },

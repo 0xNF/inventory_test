@@ -156,6 +156,7 @@ const fields_arr: &[&str] = &[
     "Name",
     "AcquiredDate",
     "PurchaseCurrency",
+    "PurchasePrice",
     "ReceivedFrom",
     "SerialNumber",
     "PurchaseReference",
