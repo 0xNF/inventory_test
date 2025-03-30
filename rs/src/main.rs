@@ -1,11 +1,13 @@
 use chrono::Local;
 use clap::{Args, Parser, Subcommand};
+use dirs::{config_dir, home_dir};
 use rusqlite::{params_from_iter, Connection, OptionalExtension, Result as SqliteResult};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::{self, Write};
+use std::path::{Path, PathBuf};
 use uuid::Uuid;
 mod regex_rust;
 
@@ -29,8 +31,23 @@ struct Config {
 }
 
 impl Config {
-    /// Load configuration from a file
-    pub fn from_file(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    /// Load configuration using XDG conventions
+    pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
+        // Try multiple locations in order of priority
+        let config_paths = get_config_paths();
+        
+        for path in config_paths {
+            if path.exists() {
+                return Self::from_file(&path);
+            }
+        }
+        
+        // Return default if no config file found
+        Ok(Self::default())
+    }
+
+    /// Load configuration from a specific file path
+    pub fn from_file(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
         let file = File::open(path)?;
         let reader = BufReader::new(file);
         let config = serde_json::from_reader(reader)?;
@@ -204,14 +221,40 @@ const FIELDS_ARR: &[&str] = &[
     "Extra",
 ];
 
+/// Get the list of possible config file paths following XDG convention
+fn get_config_paths() -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    
+    // First check for environment variable
+    if let Ok(path) = std::env::var("INVENTORY_CONFIG") {
+        paths.push(PathBuf::from(path));
+    }
+    
+    // Then check XDG_CONFIG_HOME or ~/.config
+    if let Some(config_dir) = config_dir() {
+        let xdg_path = config_dir.join("inventory").join("config.json");
+        paths.push(xdg_path);
+    }
+    
+    // Check home directory
+    if let Some(home) = home_dir() {
+        paths.push(home.join(".inventory.json"));
+    }
+    
+    // Check current directory
+    paths.push(PathBuf::from("config.json"));
+    
+    // Check relative to executable
+    paths.push(PathBuf::from("../config.json"));
+    
+    paths
+}
+
 fn main() -> SqliteResult<()> {
     let cli = Cli::parse();
 
-    // Load configuration if available
-    let config = match Config::from_file("config.json") {
-        Ok(cfg) => cfg,
-        Err(_) => Config::default(),
-    };
+    // Load configuration using XDG conventions
+    let config = Config::load().unwrap_or_else(|_| Config::default());
 
     // Connect to the database
     let db_path = config
