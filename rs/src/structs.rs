@@ -19,7 +19,7 @@ pub(crate) struct InventoryItem {
     pub(crate) future_purchase: Option<bool>,
 }
 
-// Data structure for short inventory items
+/// Data structure for short inventory items
 /// Represents an editable item where all fields are optional
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -58,7 +58,7 @@ pub struct ShortInventoryItem {
     pub(crate) acquired_date: Option<String>,
 }
 
-// Data structure for a newly added inventory item
+/// Data structure for a newly added inventory item
 #[derive(Serialize)]
 pub(crate) struct NewInventoryItem {
     pub(crate) id: String,
@@ -66,7 +66,7 @@ pub(crate) struct NewInventoryItem {
     pub(crate) acquired_date: String,
 }
 
-// Data structure for removal result
+/// Data structure for removal result
 #[derive(Serialize)]
 pub(crate) struct RemovalResult {
     pub(crate) success: bool,
