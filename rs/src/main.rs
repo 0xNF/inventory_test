@@ -3,9 +3,51 @@ use clap::{Args, Parser, Subcommand};
 use rusqlite::{params_from_iter, Connection, OptionalExtension, Result as SqliteResult};
 use serde::{Deserialize, Serialize};
 use serde_json;
+use std::fs::File;
+use std::io::BufReader;
 use std::io::{self, Write};
 use uuid::Uuid;
 mod regex_rust;
+
+/// Configuration structure for the inventory manager
+#[derive(Debug, Serialize, Deserialize)]
+struct Config {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_currency: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub database_path: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_page_limit: Option<u32>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_sort_by: Option<Vec<String>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_order_by: Option<String>,
+}
+
+impl Config {
+    /// Load configuration from a file
+    pub fn from_file(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+        let config = serde_json::from_reader(reader)?;
+        Ok(config)
+    }
+
+    /// Create a new default configuration
+    pub fn default() -> Self {
+        Config {
+            default_currency: None,
+            database_path: None,
+            default_page_limit: None,
+            default_sort_by: None,
+            default_order_by: None,
+        }
+    }
+}
 
 /// Inventory Manager - A CLI tool to manage inventory items
 #[derive(Parser)]
@@ -43,7 +85,7 @@ struct PagingInfo {
     total: u32,
 }
 
-#[derive(Args)]
+#[derive(Args, Clone)]
 struct ListArgs {
     /// Display only ID, Name, and Date Purchased
     #[arg(short, long, default_value_t = false)]
@@ -165,25 +207,56 @@ const FIELDS_ARR: &[&str] = &[
 fn main() -> SqliteResult<()> {
     let cli = Cli::parse();
 
+    // Load configuration if available
+    let config = match Config::from_file("config.json") {
+        Ok(cfg) => cfg,
+        Err(_) => Config::default(),
+    };
+
     // Connect to the database
-    let conn = Connection::open("../inventory.db")?;
+    let db_path = config
+        .database_path
+        .to_owned()
+        .unwrap_or_else(|| "../inventory.db".to_string());
+    let conn = Connection::open(db_path)?;
 
     // Add the REGEXP function
     regex_rust::add_regexp_function(&conn)?;
 
+    // Apply config to command args if needed
     match &cli.command {
         Commands::List(args) => {
-            if args.short {
-                list_short_inventory(&conn, args)?;
+            // Apply config defaults if args are not explicitly provided
+            let mut args_with_defaults = args.clone();
+
+            // Apply defaults from config
+            if args_with_defaults.limit.is_none() && !args_with_defaults.all {
+                args_with_defaults.limit = config.default_page_limit;
+            }
+
+            if args_with_defaults.sort_by.is_none() {
+                args_with_defaults.sort_by = config.default_sort_by.clone();
+            }
+
+            if args_with_defaults.order_by.is_none() {
+                args_with_defaults.order_by = config.default_order_by.clone();
+            }
+
+            if args_with_defaults.short {
+                list_short_inventory(&conn, &args_with_defaults)?;
             } else {
-                list_long_inventory(&conn, args)?;
+                list_long_inventory(&conn, &args_with_defaults)?;
             }
         }
+
         Commands::Add(args) => {
             if args.interactive {
-                add_inventory_item_interactive(&conn, args.json)?;
+                // Use default currency from config if available
+                let default_currency =
+                    &config.default_currency.unwrap_or_else(|| "JPY".to_string());
+                add_inventory_item_interactive(&conn, args.json, &default_currency)?;
             } else if let Some(json_input) = &args.input {
-                add_inventory_item_from_json(&conn, json_input, args.json)?;
+                add_inventory_item_from_json(&conn, json_input, args.json, &config)?;
             } else {
                 add_inventory_item(&conn, args.name.as_ref().unwrap(), args.json)?;
             }
@@ -622,6 +695,7 @@ fn add_inventory_item_from_json(
     conn: &Connection,
     json_input: &str,
     json_output: bool,
+    config: &Config,
 ) -> SqliteResult<()> {
     // Parse the JSON input - handle missing values
     let item: InventoryItem = serde_json::from_str(json_input)
@@ -633,10 +707,13 @@ fn add_inventory_item_from_json(
 
     // Use default values just like interactive mode
     let acquired_date = item.acquired_date.unwrap_or_else(|| today.clone());
-    let purchase_currency = item
-        .purchase_currency
-        .clone()
-        .unwrap_or_else(|| String::from("JPY"));
+    // Use default currency from config if available
+    let purchase_currency = item.purchase_currency.clone().unwrap_or_else(|| {
+        config
+            .default_currency
+            .clone()
+            .unwrap_or_else(|| String::from("JPY"))
+    });
     let is_used = item.is_used.unwrap_or(false);
     let future_purchase = item.future_purchase.unwrap_or(false);
 
@@ -674,7 +751,11 @@ fn add_inventory_item_from_json(
     print_new_inventory_item(&new_item, json_output)
 }
 
-fn add_inventory_item_interactive(conn: &Connection, json: bool) -> SqliteResult<()> {
+fn add_inventory_item_interactive(
+    conn: &Connection,
+    json: bool,
+    default_currency: &str,
+) -> SqliteResult<()> {
     // Create a new inventory item interactively
     let id = Uuid::new_v4().to_string();
     let today = Local::now().format("%Y-%m-%d").to_string();
@@ -694,7 +775,7 @@ fn add_inventory_item_interactive(conn: &Connection, json: bool) -> SqliteResult
     };
 
     // Purchase Currency
-    let purchase_currency = prompt_input("Purchase currency", Some("JPY"), false);
+    let purchase_currency = prompt_input("Purchase currency", Some(default_currency), false);
     let purchase_currency = if purchase_currency.is_empty() {
         None
     } else {
