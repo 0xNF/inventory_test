@@ -53,7 +53,7 @@ type EditItemRequest struct {
 	FuturePurchase    bool    `json:"future_purchase,omitempty"`
 }
 
-func (p *InventoryProg) list(limit, offset *uint32, sortBy string, orderBy string) ([]byte, error) {
+func (p *InventoryProg) list(limit, offset *uint32, sortBy string, orderBy string, filter string, fields []string) ([]byte, error) {
 	args := []string{"list", "--long", "--json"}
 
 	if limit != nil {
@@ -67,6 +67,12 @@ func (p *InventoryProg) list(limit, offset *uint32, sortBy string, orderBy strin
 	}
 	if orderBy != "" {
 		args = append(args, "--order-by", orderBy)
+	}
+	if filter != "" {
+		args = append(args, "--filter", filter)
+		if len(fields) > 0 {
+			args = append(args, "--fields", strings.Join(fields, ","))
+		}
 	}
 
 	cmd := exec.Command(p.path, args...)
@@ -104,6 +110,7 @@ func main() {
 	http.HandleFunc("/api/items/add", handleAddItem)
 	http.HandleFunc("/api/items/remove", handleRemoveItem)
 	http.HandleFunc("/api/items/edit/", handleEditItem)
+	http.HandleFunc("/api/items/search", handleItems) // Search uses the same handler as it's just a filtered list
 
 	// Start the server
 	fmt.Println("Starting server at http://localhost:8080")
@@ -137,8 +144,15 @@ func handleItems(w http.ResponseWriter, r *http.Request) {
 	sortBy := query.Get("sortBy")
 	orderBy := query.Get("orderBy")
 
-	// Execute the inventory_manager_rs list command with pagination
-	output, err := prog.list(limit, offset, sortBy, orderBy)
+	// Get search parameters
+	filter := query.Get("filter")
+	fields := []string{}
+	if fieldsStr := query.Get("fields"); fieldsStr != "" {
+		fields = strings.Split(fieldsStr, ",")
+	}
+
+	// Execute the inventory_manager_rs list command with pagination and filtering
+	output, err := prog.list(limit, offset, sortBy, orderBy, filter, fields)
 	if err != nil {
 		http.Error(w, "Failed to execute inventory manager: "+err.Error(), http.StatusInternalServerError)
 		return
