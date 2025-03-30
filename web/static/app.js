@@ -189,16 +189,15 @@ function renderInventoryItems() {
             row.innerHTML = `
                 <td>
                     <span class="info-icon" data-id="${item.id}">ℹ️</span>
-                    ${item.id}
+                    ${item.name}
                 </td>
-                <td>${item.name}</td>
                 <td>${purchaseDate}</td>
                 <td>${price}</td>
                 <td>${item.is_used ? 'Yes' : 'No'}</td>
-                <td>${item.future_purchase ? 'Yes' : 'No'}</td>
                 <td>
-                <button class="action-btn edit-btn" data-id="${item.id}">Edit</button>
+                    <button class="action-btn edit-btn" data-id="${item.id}">Edit</button>
                 </td>
+                <td>${item.notes || ''}</td>
             `;
             
             inventoryTable.appendChild(row);
