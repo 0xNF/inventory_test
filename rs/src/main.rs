@@ -224,31 +224,33 @@ const FIELDS_ARR: &[&str] = &[
 
 /// Get the list of possible config file paths following XDG convention
 fn get_config_paths() -> Vec<PathBuf> {
+    const ENV_KEY_CONFIG: &'static str = "0XNFWT_INVENTORY_CONFIG";
+    const CONFIG_JSON_NAME: &'static str = "0xnfwt_inventory.json";
+    const XDG_CONFIG_DIR: &'static str = "0xnfwt_inventory";
+
     let mut paths = Vec::new();
 
     // First check for environment variable
-    if let Ok(path) = std::env::var("0XNFWT_INVENTORY_CONFIG") {
+    if let Ok(path) = std::env::var(ENV_KEY_CONFIG) {
         paths.push(PathBuf::from(path));
     }
 
     // Then check XDG_CONFIG_HOME or ~/.config
     if let Some(config_dir) = config_dir() {
-        let xdg_path = config_dir
-            .join("0xnfwt_inventory")
-            .join("0xnfwt_inventory.json");
+        let xdg_path = config_dir.join(XDG_CONFIG_DIR).join(CONFIG_JSON_NAME);
         paths.push(xdg_path);
     }
 
     // Check home directory
     if let Some(home) = home_dir() {
-        paths.push(home.join(".0xnfwt_inventory.json"));
+        paths.push(home.join(CONFIG_JSON_NAME));
     }
 
     // Check current directory
-    paths.push(PathBuf::from("0xnfwt_inventory.json"));
+    paths.push(PathBuf::from(CONFIG_JSON_NAME));
 
     // Check relative to executable
-    paths.push(PathBuf::from("../0xnfwt_inventory.json"));
+    paths.push(PathBuf::from(CONFIG_JSON_NAME));
 
     paths
 }
