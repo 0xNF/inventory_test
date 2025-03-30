@@ -1,8 +1,6 @@
 use chrono::Local;
 use clap::{Args, Parser, Subcommand};
-use rusqlite::{
-    params, params_from_iter, Connection, OptionalExtension, Params, Result as SqliteResult,
-};
+use rusqlite::{params_from_iter, Connection, OptionalExtension, Result as SqliteResult};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::io::{self, Write};
@@ -152,7 +150,7 @@ struct InventoryItem {
     future_purchase: Option<bool>,
 }
 
-const fields_arr: &[&str] = &[
+const FIELDS_ARR: &[&str] = &[
     "Name",
     "AcquiredDate",
     "PurchaseCurrency",
@@ -269,9 +267,9 @@ fn get_short_inventory(
     let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
 
     if let Some(filter_pattern) = &args.filter {
-        if let Ok(re) = Regex::new(filter_pattern) {
+        if let Ok(_) = Regex::new(filter_pattern) {
             let filter_fields = args.fields.as_ref().map(|f| f.to_owned()).unwrap_or(
-                fields_arr
+                FIELDS_ARR
                     .iter()
                     .map(|y| y.to_string())
                     .collect::<Vec<String>>(),
@@ -370,9 +368,6 @@ fn print_short_inventory(response: &PagedResponse<ShortInventoryItem>) {
 
 // Main function that combines retrieval and display
 fn list_short_inventory(conn: &Connection, args: &ListArgs) -> SqliteResult<()> {
-    let limit = if args.all { None } else { args.limit };
-    let offset = if args.all { None } else { args.offset };
-
     let response = get_short_inventory(conn, args)?;
     if args.json {
         println!(
@@ -401,7 +396,7 @@ fn get_long_inventory(
     if let Some(filter_pattern) = &args.filter {
         if let Ok(_) = Regex::new(filter_pattern) {
             let filter_fields = args.fields.as_ref().map(|f| f.to_owned()).unwrap_or(
-                fields_arr
+                FIELDS_ARR
                     .iter()
                     .map(|y| y.to_string())
                     .collect::<Vec<String>>(),
@@ -629,7 +624,7 @@ fn add_inventory_item_from_json(
     json_output: bool,
 ) -> SqliteResult<()> {
     // Parse the JSON input - handle missing values
-    let mut item: InventoryItem = serde_json::from_str(json_input)
+    let item: InventoryItem = serde_json::from_str(json_input)
         .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
 
     // Set default values for empty/missing fields
