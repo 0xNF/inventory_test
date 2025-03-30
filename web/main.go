@@ -40,17 +40,17 @@ type InventoryProg struct {
 }
 
 type EditItemRequest struct {
-	Name              string  `json:"name,omitempty"`
-	AcquiredDate      string  `json:"acquired_date,omitempty"`
-	PurchasePrice     float64 `json:"purchase_price,omitempty"`
-	PurchaseCurrency  string  `json:"purchase_currency,omitempty"`
-	IsUsed            bool    `json:"is_used,omitempty"`
-	ReceivedFrom      string  `json:"received_from,omitempty"`
-	SerialNumber      string  `json:"serial_number,omitempty"`
-	PurchaseReference string  `json:"purchase_reference,omitempty"`
-	Notes             string  `json:"notes,omitempty"`
-	Extra             string  `json:"extra,omitempty"`
-	FuturePurchase    bool    `json:"future_purchase,omitempty"`
+	Name              string   `json:"name,omitempty"`
+	AcquiredDate      string   `json:"acquired_date,omitempty"`
+	PurchasePrice     *float64 `json:"purchase_price,omitempty"`
+	PurchaseCurrency  string   `json:"purchase_currency,omitempty"`
+	IsUsed            *bool    `json:"is_used,omitempty"`
+	ReceivedFrom      string   `json:"received_from,omitempty"`
+	SerialNumber      string   `json:"serial_number,omitempty"`
+	PurchaseReference string   `json:"purchase_reference,omitempty"`
+	Notes             string   `json:"notes,omitempty"`
+	Extra             string   `json:"extra,omitempty"`
+	FuturePurchase    *bool    `json:"future_purchase,omitempty"`
 }
 
 func (p *InventoryProg) list(limit, offset *uint32, sortBy string, orderBy string, filter string, fields []string) ([]byte, error) {
