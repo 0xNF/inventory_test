@@ -363,8 +363,9 @@ function renderInventoryItems() {
         }
     });
 
-    // Initialize object to track original values for edit form
+    // Initialize objects to track original values and changes for edit form
     let originalItemValues = {};
+    let editedFields = new Set();
     
     function handleEditFormSubmit(event) {
         event.preventDefault();
@@ -378,12 +379,14 @@ function renderInventoryItems() {
         const nameField = document.getElementById('edit-item-name').value;
         if (nameField !== originalItemValues.name) {
             changedFields.name = nameField;
+            editedFields.add('name');
         }
         
         // Check acquired_date field
         const dateField = document.getElementById('edit-date-purchased').value;
         if (dateField !== originalItemValues.acquired_date) {
             changedFields.acquired_date = dateField || null;
+            editedFields.add('acquired_date');
         }
         
         // Check purchase_price field
@@ -391,36 +394,42 @@ function renderInventoryItems() {
         const priceValue = priceField ? parseFloat(priceField) : null;
         if (priceValue !== originalItemValues.purchase_price) {
             changedFields.purchase_price = priceValue;
+            editedFields.add('purchase_price');
         }
         
         // Check purchase_currency field
         const currencyField = document.getElementById('edit-purchase-currency').value;
         if (currencyField !== originalItemValues.purchase_currency) {
             changedFields.purchase_currency = currencyField || null;
+            editedFields.add('purchase_currency');
         }
         
         // Check purchase_reference field
         const refField = document.getElementById('edit-purchase-ref').value;
         if (refField !== originalItemValues.purchase_reference) {
             changedFields.purchase_reference = refField || null;
+            editedFields.add('purchase_reference');
         }
         
         // Check is_used checkbox
         const isUsedField = document.getElementById('edit-is-used').checked;
         if (isUsedField !== originalItemValues.is_used) {
             changedFields.is_used = isUsedField;
+            editedFields.add('is_used');
         }
         
         // Check future_purchase checkbox
         const futurePurchaseField = document.getElementById('edit-future-purchase').checked;
         if (futurePurchaseField !== originalItemValues.future_purchase) {
             changedFields.future_purchase = futurePurchaseField;
+            editedFields.add('future_purchase');
         }
         
         // Check notes field
         const notesField = document.getElementById('edit-notes').value;
         if (notesField !== originalItemValues.notes) {
             changedFields.notes = notesField || null;
+            editedFields.add('notes');
         }
         
         // If no fields were changed, show a message and return
