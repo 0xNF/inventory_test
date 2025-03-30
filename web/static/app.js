@@ -372,6 +372,13 @@ function renderInventoryItems() {
         }
     });
 
+    // Close edit modal when pressing Escape key
+    window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && editModal.style.display === 'block') {
+            editModal.style.display = 'none';
+        }
+    });
+
     // Initialize objects to track original values and changes for edit form
     let originalItemValues = {};
     let editedFields = new Set();
