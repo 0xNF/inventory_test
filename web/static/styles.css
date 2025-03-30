@@ -120,6 +120,7 @@ td:nth-child(6) {
     white-space: nowrap;
     overflow-x: auto;
     text-overflow: ellipsis;
+    display: block;
 }
 
 th {
