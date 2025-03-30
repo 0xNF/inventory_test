@@ -115,7 +115,7 @@ th, td {
 }
 
 /* Notes column styling */
-td:last-child {
+td:nth-child(6) {
     max-width: 250px;
     white-space: nowrap;
     overflow-x: auto;
