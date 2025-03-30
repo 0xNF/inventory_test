@@ -1,213 +1,15 @@
 use chrono::Local;
-use clap::{Args, Parser, Subcommand};
-use dirs::{config_dir, home_dir};
+use clap::Parser;
 use rusqlite::{params_from_iter, Connection, OptionalExtension, Result as SqliteResult};
-use serde::{Deserialize, Serialize};
 use serde_json;
-use std::fs::File;
-use std::io::BufReader;
 use std::io::{self, Write};
-use std::path::{Path, PathBuf};
 use uuid::Uuid;
+mod cli;
+mod config;
 mod regex_rust;
-
-/// Configuration structure for the inventory manager
-#[derive(Debug, Serialize, Deserialize)]
-struct Config {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub default_currency: Option<String>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub database_path: Option<String>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub default_page_limit: Option<u32>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub default_sort_by: Option<Vec<String>>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub default_order_by: Option<String>,
-}
-
-impl Config {
-    /// Load configuration using XDG conventions
-    pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
-        // Try multiple locations in order of priority
-        let config_paths = get_config_paths();
-
-        for path in config_paths {
-            if path.exists() {
-                return Self::from_file(&path);
-            }
-        }
-
-        // Return default if no config file found
-        Ok(Self::default())
-    }
-
-    /// Load configuration from a specific file path
-    pub fn from_file(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
-        let file = File::open(path)?;
-        let reader = BufReader::new(file);
-        let config = serde_json::from_reader(reader)?;
-        Ok(config)
-    }
-
-    /// Create a new default configuration
-    pub fn default() -> Self {
-        Config {
-            default_currency: None,
-            database_path: None,
-            default_page_limit: None,
-            default_sort_by: None,
-            default_order_by: None,
-        }
-    }
-}
-
-/// Inventory Manager - A CLI tool to manage inventory items
-#[derive(Parser)]
-#[command(author, version, about, long_about = None)]
-struct Cli {
-    #[command(subcommand)]
-    command: Commands,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    /// List all inventory items
-    List(ListArgs),
-
-    /// Add a new inventory item
-    Add(AddArgs),
-
-    /// Remove an inventory item by ID
-    Remove(RemoveArgs),
-
-    /// Edit an existing inventory item
-    Edit(EditArgs),
-}
-
-#[derive(Debug, Serialize)]
-struct PagedResponse<T> {
-    items: Vec<T>,
-    paging: PagingInfo,
-}
-
-#[derive(Debug, Serialize)]
-struct PagingInfo {
-    limit: Option<u32>,
-    offset: Option<u32>,
-    total: u32,
-}
-
-#[derive(Args, Clone)]
-struct ListArgs {
-    /// Display only ID, Name, and Date Purchased
-    #[arg(short, long, default_value_t = false)]
-    short: bool,
-
-    /// Display all item details (default)
-    #[arg(long, default_value_t = false)]
-    long: bool,
-
-    /// Output in JSON format
-    #[arg(long, default_value_t = false)]
-    json: bool,
-
-    /// Return all results without paging
-    #[arg(long, default_value_t = false)]
-    all: bool,
-
-    /// Number of items per page
-    #[arg(long)]
-    limit: Option<u32>,
-
-    /// Number of items to skip
-    #[arg(long)]
-    offset: Option<u32>,
-
-    /// Sort direction (asc or desc)
-    #[arg(long, value_parser = ["asc", "desc"])]
-    order_by: Option<String>,
-
-    /// Fields to sort by, in order of priority (can be specified multiple times)
-    #[arg(long, value_delimiter = ',')]
-    sort_by: Option<Vec<String>>,
-
-    /// Regular expression to filter results by
-    #[arg(long)]
-    filter: Option<String>,
-
-    /// Comma-separated list of fields to filter on
-    #[arg(long, value_delimiter = ',')]
-    fields: Option<Vec<String>>,
-}
-
-#[derive(Args)]
-struct AddArgs {
-    /// Name of the item
-    #[arg(required_unless_present_any = ["interactive", "input"])]
-    name: Option<String>,
-
-    /// Interactive mode - prompts for all fields
-    #[arg(short = 'i', long = "interactive")]
-    interactive: bool,
-
-    /// JSON string containing item details
-    #[arg(long = "input")]
-    input: Option<String>,
-
-    /// Output in JSON format
-    #[arg(long, default_value_t = false)]
-    json: bool,
-}
-
-#[derive(Args)]
-struct RemoveArgs {
-    /// ID of the item to remove
-    #[arg(required = true)]
-    id: String,
-
-    /// Output in JSON format
-    #[arg(long, default_value_t = false)]
-    json: bool,
-}
-
-#[derive(Args)]
-struct EditArgs {
-    /// ID of the item to edit
-    #[arg(required = true)]
-    id: String,
-
-    /// JSON string containing fields to update
-    #[arg(long = "input", required = true)]
-    input: String,
-
-    /// Output in JSON format
-    #[arg(long, default_value_t = false)]
-    json: bool,
-}
-
-/// Represents a new inventory item with required name
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct InventoryItem {
-    #[serde(default)]
-    id: String,
-    name: String, // Required for new items
-    acquired_date: Option<String>,
-    purchase_price: Option<i64>,
-    purchase_currency: Option<String>,
-    is_used: Option<bool>,
-    received_from: Option<String>,
-    serial_number: Option<String>,
-    purchase_reference: Option<String>,
-    notes: Option<String>,
-    extra: Option<String>,
-    future_purchase: Option<bool>,
-}
+use cli::*;
+mod structs;
+use structs::*;
 
 const FIELDS_ARR: &[&str] = &[
     "Name",
@@ -221,44 +23,11 @@ const FIELDS_ARR: &[&str] = &[
     "Extra",
 ];
 
-/// Get the list of possible config file paths following XDG convention
-fn get_config_paths() -> Vec<PathBuf> {
-    const ENV_KEY_CONFIG: &'static str = "0XNFWT_INVENTORY_CONFIG";
-    const CONFIG_JSON_NAME: &'static str = "0xnfwt_inventory.json";
-    const XDG_CONFIG_DIR: &'static str = "0xnfwt_inventory";
-
-    let mut paths = Vec::new();
-
-    // First check for environment variable
-    if let Ok(path) = std::env::var(ENV_KEY_CONFIG) {
-        paths.push(PathBuf::from(path));
-    }
-
-    // Then check XDG_CONFIG_HOME or ~/.config
-    if let Some(config_dir) = config_dir() {
-        let xdg_path = config_dir.join(XDG_CONFIG_DIR).join(CONFIG_JSON_NAME);
-        paths.push(xdg_path);
-    }
-
-    // Check home directory
-    if let Some(home) = home_dir() {
-        paths.push(home.join(CONFIG_JSON_NAME));
-    }
-
-    // Check current directory
-    paths.push(PathBuf::from(CONFIG_JSON_NAME));
-
-    // Check relative to executable
-    paths.push(PathBuf::from(CONFIG_JSON_NAME));
-
-    paths
-}
-
 fn main() -> SqliteResult<()> {
-    let cli = Cli::parse();
+    let cli = cli::Cli::parse();
 
     // Load configuration using XDG conventions
-    let config = Config::load().unwrap_or_else(|_| Config::default());
+    let config = config::Config::load().unwrap_or_else(|_| config::Config::default());
 
     // Connect to the database
     let db_path = config
@@ -296,7 +65,7 @@ fn main() -> SqliteResult<()> {
             }
         }
 
-        Commands::Add(args) => {
+        cli::Commands::Add(args) => {
             if args.interactive {
                 // Use default currency from config if available
                 let default_currency =
@@ -317,45 +86,6 @@ fn main() -> SqliteResult<()> {
     }
 
     Ok(())
-}
-
-// Data structure for short inventory items
-/// Represents an editable item where all fields are optional
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct EditableItem {
-    #[serde(default)]
-    #[serde(skip_serializing)]
-    id: String,
-    #[serde(default)]
-    name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    acquired_date: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    purchase_price: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    purchase_currency: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    is_used: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    received_from: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    serial_number: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    purchase_reference: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    notes: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    extra: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    future_purchase: Option<bool>,
-}
-
-#[derive(Serialize)]
-struct ShortInventoryItem {
-    id: String,
-    name: String,
-    acquired_date: Option<String>,
 }
 
 fn build_sort_clause(args: &ListArgs) -> String {
@@ -690,14 +420,6 @@ fn list_long_inventory(conn: &Connection, args: &ListArgs) -> SqliteResult<()> {
     print_long_inventory(&response, args.json)
 }
 
-// Data structure for a newly added inventory item
-#[derive(Serialize)]
-struct NewInventoryItem {
-    id: String,
-    name: String,
-    acquired_date: String,
-}
-
 // Function to add a new inventory item to the database
 fn create_inventory_item(conn: &Connection, name: &str) -> SqliteResult<NewInventoryItem> {
     let id = Uuid::new_v4().to_string();
@@ -742,7 +464,7 @@ fn add_inventory_item_from_json(
     conn: &Connection,
     json_input: &str,
     json_output: bool,
-    config: &Config,
+    config: &config::Config,
 ) -> SqliteResult<()> {
     // Parse the JSON input - handle missing values
     let item: InventoryItem = serde_json::from_str(json_input)
@@ -940,15 +662,6 @@ fn prompt_input(prompt: &str, default: Option<&str>, required: bool) -> String {
     }
 }
 
-// Data structure for removal result
-#[derive(Serialize)]
-struct RemovalResult {
-    success: bool,
-    item_id: String,
-    item_name: Option<String>,
-    message: String,
-}
-
 // Function to remove an inventory item from the database
 fn delete_inventory_item(conn: &Connection, id: &str) -> SqliteResult<RemovalResult> {
     // First verify the item exists
@@ -996,13 +709,6 @@ fn print_removal_result(result: &RemovalResult, json: bool) -> SqliteResult<()> 
 fn remove_inventory_item(conn: &Connection, id: &str, json: bool) -> SqliteResult<()> {
     let result = delete_inventory_item(conn, id)?;
     print_removal_result(&result, json)
-}
-
-#[derive(Serialize)]
-struct EditResult {
-    success: bool,
-    item_id: String,
-    message: String,
 }
 
 fn edit_inventory_item(
