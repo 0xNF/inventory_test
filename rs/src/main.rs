@@ -37,7 +37,6 @@ impl Config {
         let config_paths = get_config_paths();
 
         for path in config_paths {
-            println!("Searching: {}", &path.to_string_lossy());
             if path.exists() {
                 return Self::from_file(&path);
             }
