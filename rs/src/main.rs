@@ -1,6 +1,8 @@
 use chrono::Local;
 use clap::{Args, Parser, Subcommand};
-use rusqlite::{Connection, OptionalExtension, Result as SqliteResult};
+use rusqlite::{
+    params, params_from_iter, Connection, OptionalExtension, Params, Result as SqliteResult,
+};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::io::{self, Write};
@@ -137,7 +139,7 @@ struct EditArgs {
 struct InventoryItem {
     #[serde(default)]
     id: String,
-    name: String,  // Required for new items
+    name: String, // Required for new items
     acquired_date: Option<String>,
     purchase_price: Option<i64>,
     purchase_currency: Option<String>,
@@ -149,6 +151,17 @@ struct InventoryItem {
     extra: Option<String>,
     future_purchase: Option<bool>,
 }
+
+const fields_arr: &[&str] = &[
+    "Name",
+    "AcquiredDate",
+    "PurchaseCurrency",
+    "ReceivedFrom",
+    "SerialNumber",
+    "PurchaseReference",
+    "Notes",
+    "Extra",
+];
 
 fn main() -> SqliteResult<()> {
     let cli = Cli::parse();
@@ -256,10 +269,12 @@ fn get_short_inventory(
 
     if let Some(filter_pattern) = &args.filter {
         if let Ok(re) = Regex::new(filter_pattern) {
-            let filter_fields = args.fields.as_ref().map(|f| f.as_slice()).unwrap_or(&[
-                "Name",
-                "AcquiredDate",
-            ]);
+            let filter_fields = args.fields.as_ref().map(|f| f.to_owned()).unwrap_or(
+                fields_arr
+                    .iter()
+                    .map(|y| y.to_string())
+                    .collect::<Vec<String>>(),
+            );
 
             let field_conditions: Vec<String> = filter_fields
                 .iter()
@@ -283,19 +298,15 @@ fn get_short_inventory(
     };
 
     // Get total count with filters applied
-    let count_query = format!(
-        "SELECT COUNT(*) FROM inventory{}",
+    let count_query = format!("SELECT COUNT(*) FROM inventory{}", where_clause);
+
+    let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+    let total: u32 = conn.query_row(&count_query, param_refs.as_slice(), |row| row.get(0))?;
+
+    let mut query = format!(
+        "SELECT Id, Name, AcquiredDate FROM inventory{}",
         where_clause
     );
-    
-    let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
-    let total: u32 = conn.query_row(
-        &count_query,
-        param_refs.as_slice(),
-        |row| row.get(0)
-    )?;
-
-    let mut query = format!("SELECT Id, Name, AcquiredDate FROM inventory{}", where_clause);
 
     // Add sorting
     query.push_str(&build_sort_clause(args));
@@ -385,12 +396,16 @@ fn get_long_inventory(
     let mut where_conditions = Vec::new();
     let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
 
+    let mut filter_field_count: usize = 0;
     if let Some(filter_pattern) = &args.filter {
-        if let Ok(re) = Regex::new(filter_pattern) {
-            let filter_fields = args.fields.as_ref().map(|f| f.as_slice()).unwrap_or(&[
-                "Name", "AcquiredDate", "PurchaseCurrency", "ReceivedFrom",
-                "SerialNumber", "PurchaseReference", "Notes", "Extra"
-            ]);
+        if let Ok(_) = Regex::new(filter_pattern) {
+            let filter_fields = args.fields.as_ref().map(|f| f.to_owned()).unwrap_or(
+                fields_arr
+                    .iter()
+                    .map(|y| y.to_string())
+                    .collect::<Vec<String>>(),
+            );
+            filter_field_count = filter_fields.len();
 
             let field_conditions: Vec<String> = filter_fields
                 .iter()
@@ -414,17 +429,10 @@ fn get_long_inventory(
     };
 
     // Get total count with filters applied
-    let count_query = format!(
-        "SELECT COUNT(*) FROM inventory{}",
-        where_clause
-    );
-    
+    let count_query = format!("SELECT COUNT(*) FROM inventory{}", where_clause);
+
     let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
-    let total: u32 = conn.query_row(
-        &count_query,
-        param_refs.as_slice(),
-        |row| row.get(0)
-    )?;
+    let total: u32 = conn.query_row(&count_query, param_refs.as_slice(), |row| row.get(0))?;
 
     let mut query = format!(
         "SELECT 
@@ -446,7 +454,18 @@ fn get_long_inventory(
     }
 
     let mut stmt = conn.prepare(&query)?;
-    let items_iter = stmt.query_map([], |row| {
+
+    let params = match args.filter.as_ref() {
+        Some(s) => {
+            let mut v: Vec<String> = Vec::with_capacity(filter_field_count);
+            for _ in 0..filter_field_count {
+                v.push(s.to_owned());
+            }
+            v
+        }
+        None => Vec::new(),
+    };
+    let items_iter = stmt.query_map(params_from_iter(params.iter()), |row| {
         let is_used: Option<i64> = row.get(5)?;
         let future_purchase: Option<i64> = row.get(11)?;
 
@@ -551,9 +570,6 @@ fn print_long_inventory(response: &PagedResponse<InventoryItem>, json: bool) -> 
 
 // Main function that combines retrieval and display
 fn list_long_inventory(conn: &Connection, args: &ListArgs) -> SqliteResult<()> {
-    let limit = if args.all { None } else { args.limit };
-    let offset = if args.all { None } else { args.offset };
-
     let response = get_long_inventory(conn, args)?;
     print_long_inventory(&response, args.json)
 }
