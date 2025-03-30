@@ -21,7 +21,7 @@ pub fn add_regexp_function(db: &Connection) -> Result<()> {
             };
             match text {
                 Some(text) => {
-                    let re = Regex::new(&regexp)
+                    let re = Regex::new(&format!("(?i){}", regexp))
                         .map_err(|err| Error::UserFunctionError(Box::new(err)))?;
 
                     Ok(re.is_match(&text))
