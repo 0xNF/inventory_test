@@ -332,7 +332,17 @@ function renderInventoryItems() {
             document.getElementById('edit-item-name').value = originalItemValues.name;
             document.getElementById('edit-date-purchased').value = originalItemValues.acquired_date;
             document.getElementById('edit-purchase-price').value = originalItemValues.purchase_price;
-            document.getElementById('edit-purchase-currency').value = originalItemValues.purchase_currency;
+            
+            // Set the currency dropdown to the correct value or default to JPY
+            const currencySelect = document.getElementById('edit-purchase-currency');
+            const currency = originalItemValues.purchase_currency || 'JPY';
+            for (let i = 0; i < currencySelect.options.length; i++) {
+                if (currencySelect.options[i].value === currency) {
+                    currencySelect.selectedIndex = i;
+                    break;
+                }
+            }
+            
             document.getElementById('edit-purchase-ref').value = originalItemValues.purchase_reference;
             document.getElementById('edit-is-used').checked = originalItemValues.is_used;
             document.getElementById('edit-future-purchase').checked = originalItemValues.future_purchase;
