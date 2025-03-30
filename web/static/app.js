@@ -391,7 +391,8 @@ function renderInventoryItems() {
         
         // Check purchase_price field
         const priceField = document.getElementById('edit-purchase-price').value;
-        const priceValue = priceField !== '' ? parseFloat(priceField) : null;
+        const priceValue = priceField === '' ? null : parseFloat(priceField);
+        // Explicitly compare numbers or null values
         if (priceValue !== originalItemValues.purchase_price) {
             changedFields.purchase_price = priceValue;
             editedFields.add('purchase_price');
