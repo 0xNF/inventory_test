@@ -316,16 +316,28 @@ function renderInventoryItems() {
         const item = inventoryItems.find(item => item.id === id);
         
         if (item) {
+            // Store original values for comparison when saving
+            originalItemValues = {
+                name: item.name || '',
+                acquired_date: item.acquired_date || '',
+                purchase_price: item.purchase_price || null,
+                purchase_currency: item.purchase_currency || 'USD',
+                purchase_reference: item.purchase_reference || '',
+                is_used: item.is_used || false,
+                future_purchase: item.future_purchase || false,
+                notes: item.notes || ''
+            };
+            
             // Populate the edit form
             document.getElementById('edit-item-id').value = item.id;
-            document.getElementById('edit-item-name').value = item.name || '';
-            document.getElementById('edit-date-purchased').value = item.acquired_date || '';
-            document.getElementById('edit-purchase-price').value = item.purchase_price || '';
-            document.getElementById('edit-purchase-currency').value = item.purchase_currency || 'USD';
-            document.getElementById('edit-purchase-ref').value = item.purchase_reference || '';
-            document.getElementById('edit-is-used').checked = item.is_used || false;
-            document.getElementById('edit-future-purchase').checked = item.future_purchase || false;
-            document.getElementById('edit-notes').value = item.notes || '';
+            document.getElementById('edit-item-name').value = originalItemValues.name;
+            document.getElementById('edit-date-purchased').value = originalItemValues.acquired_date;
+            document.getElementById('edit-purchase-price').value = originalItemValues.purchase_price;
+            document.getElementById('edit-purchase-currency').value = originalItemValues.purchase_currency;
+            document.getElementById('edit-purchase-ref').value = originalItemValues.purchase_reference;
+            document.getElementById('edit-is-used').checked = originalItemValues.is_used;
+            document.getElementById('edit-future-purchase').checked = originalItemValues.future_purchase;
+            document.getElementById('edit-notes').value = originalItemValues.notes;
             
             // Show the modal
             document.getElementById('edit-modal').style.display = 'block';
@@ -351,30 +363,80 @@ function renderInventoryItems() {
         }
     });
 
+    // Initialize object to track original values for edit form
+    let originalItemValues = {};
+    
     function handleEditFormSubmit(event) {
         event.preventDefault();
         
         const id = document.getElementById('edit-item-id').value;
         
-        // Create JSON object from form data
-        const itemData = {
-            name: document.getElementById('edit-item-name').value,
-            acquired_date: document.getElementById('edit-date-purchased').value || null,
-            purchase_price: parseFloat(document.getElementById('edit-purchase-price').value) || null,
-            purchase_currency: document.getElementById('edit-purchase-currency').value || null,
-            purchase_reference: document.getElementById('edit-purchase-ref').value || null,
-            is_used: document.getElementById('edit-is-used').checked,
-            future_purchase: document.getElementById('edit-future-purchase').checked,
-            notes: document.getElementById('edit-notes').value || null
-        };
+        // Create JSON object with only the changed fields
+        const changedFields = {};
         
-        // Send data to server
+        // Check name field
+        const nameField = document.getElementById('edit-item-name').value;
+        if (nameField !== originalItemValues.name) {
+            changedFields.name = nameField;
+        }
+        
+        // Check acquired_date field
+        const dateField = document.getElementById('edit-date-purchased').value;
+        if (dateField !== originalItemValues.acquired_date) {
+            changedFields.acquired_date = dateField || null;
+        }
+        
+        // Check purchase_price field
+        const priceField = document.getElementById('edit-purchase-price').value;
+        const priceValue = priceField ? parseFloat(priceField) : null;
+        if (priceValue !== originalItemValues.purchase_price) {
+            changedFields.purchase_price = priceValue;
+        }
+        
+        // Check purchase_currency field
+        const currencyField = document.getElementById('edit-purchase-currency').value;
+        if (currencyField !== originalItemValues.purchase_currency) {
+            changedFields.purchase_currency = currencyField || null;
+        }
+        
+        // Check purchase_reference field
+        const refField = document.getElementById('edit-purchase-ref').value;
+        if (refField !== originalItemValues.purchase_reference) {
+            changedFields.purchase_reference = refField || null;
+        }
+        
+        // Check is_used checkbox
+        const isUsedField = document.getElementById('edit-is-used').checked;
+        if (isUsedField !== originalItemValues.is_used) {
+            changedFields.is_used = isUsedField;
+        }
+        
+        // Check future_purchase checkbox
+        const futurePurchaseField = document.getElementById('edit-future-purchase').checked;
+        if (futurePurchaseField !== originalItemValues.future_purchase) {
+            changedFields.future_purchase = futurePurchaseField;
+        }
+        
+        // Check notes field
+        const notesField = document.getElementById('edit-notes').value;
+        if (notesField !== originalItemValues.notes) {
+            changedFields.notes = notesField || null;
+        }
+        
+        // If no fields were changed, show a message and return
+        if (Object.keys(changedFields).length === 0) {
+            showNotification('No fields were changed', 'info');
+            document.getElementById('edit-modal').style.display = 'none';
+            return;
+        }
+        
+        // Send only changed fields to server
         fetch(`/api/items/edit/${id}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(itemData)
+            body: JSON.stringify(changedFields)
         })
         .then(response => {
             if (!response.ok) {
