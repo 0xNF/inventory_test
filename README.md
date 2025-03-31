@@ -9,7 +9,7 @@ This project is an experiment in using various LLMs with MCP servers to code som
 ## This project comes with an MCP server as well
 
 <img src="docs/github/mcp_query.png" height=300>
-<img src="docs/github/mcp_query.png" height=300>
+<img src="docs/github/mcp_add.png" height=300>
 
 
 
