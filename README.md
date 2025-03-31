@@ -6,6 +6,11 @@ This project is an experiment in using various LLMs with MCP servers to code som
 
 <img src="docs/github/inventory_main_page.png" height=600>
 
+## This project comes with an MCP server as well
+
+<img src="docs/github/mcp_query.png" height=600>
+<img src="docs/github/mcp_query.png" height=600>
+
 
 
 # Structure
