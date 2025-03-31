@@ -23,7 +23,7 @@ type Config struct {
 	WebServerAddress *string `json:"WebServerAddress"`
 }
 
-func (c Config) compose(other Config) Config {
+func (c Config) Compose(other Config) Config {
 	if c.LogPath == nil && other.LogPath != nil {
 		c.LogPath = other.LogPath
 	}
@@ -80,7 +80,7 @@ func ComposeConfig() Config {
 		if err == nil {
 			err = json.Unmarshal(bytes, &c)
 			if err != nil {
-				conf = conf.compose(c)
+				conf = conf.Compose(c)
 			}
 		}
 	}

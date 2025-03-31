@@ -66,6 +66,10 @@ func (p *InventoryProg) List(limit, offset *uint32, sortBy string, orderBy strin
 	cmd := exec.Command(p.path, args...)
 	output, err := cmd.Output()
 	if err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			return PagedResponse{}, fmt.Errorf("list: failed to run list command: %v", exitErr.Stderr)
+		}
 		return PagedResponse{}, fmt.Errorf("list: failed to run list command: %w", err)
 	}
 	var paged PagedResponse
@@ -84,6 +88,10 @@ func (p *InventoryProg) Add(itemData InventoryItem) (InventoryItem, error) {
 	cmd := exec.Command(p.path, "add", "--json", "--input", string(data))
 	output, err := cmd.Output()
 	if err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			return InventoryItem{}, fmt.Errorf("add item: failed to run add command: %v", exitErr.Stderr)
+		}
 		return InventoryItem{}, fmt.Errorf("add item: failed to run command: %w", err)
 	}
 	var item InventoryItem
@@ -98,6 +106,10 @@ func (p *InventoryProg) Delete(id string) (GenericProgramResponse, error) {
 	cmd := exec.Command(p.path, "remove", id)
 	output, err := cmd.Output()
 	if err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			return GenericProgramResponse{}, fmt.Errorf("delete item: failed to run delete command: %v", exitErr.Stderr)
+		}
 		return GenericProgramResponse{}, fmt.Errorf("delete item: failed to run delete command: %w", err)
 	}
 	var response GenericProgramResponse
@@ -116,6 +128,10 @@ func (p *InventoryProg) Edit(id string, itemData EditItemRequest) (GenericProgra
 	cmd := exec.Command(p.path, "edit", id, "--input", string(data), "--json")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			return GenericProgramResponse{}, fmt.Errorf("edit item: failed to run edit command: %v", exitErr.Stderr)
+		}
 		return GenericProgramResponse{}, fmt.Errorf("edit item: failed to run edit command: %w", err)
 	}
 	var response GenericProgramResponse

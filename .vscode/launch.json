@@ -13,6 +13,14 @@
             "program": "${workspaceFolder}/web/main.go"
         },
         {
+            "name": "MCP Server: Launch Server",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/mcp/cmd/mcpserver/main.go",
+            "args": ["--cli-path", "${workspaceFolder}/rs/target/debug/inventory_manager_rs.exe"]
+        },
+        {
             "type": "lldb",
             "request": "launch",
             "name": "Rust: Test list filter",

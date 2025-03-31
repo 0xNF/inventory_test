@@ -36,8 +36,7 @@ func NewInventoryMCPServer() *server.MCPServer {
 	return s
 }
 
-func LoadServer() (*InventoryMCPServer, error) {
-	config := LoadConfigFromDisk()
+func LoadServer(config Config) (*InventoryMCPServer, error) {
 	/* One or the other must be set, but not neither and not both */
 	if config.CLIPath == nil && config.WebServerAddress == nil {
 		return nil, errors.New("neither CLIPath nor WebServerAddress were set. Either one or the other must be specified")
