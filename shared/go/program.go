@@ -17,7 +17,7 @@ func NewInventoryProg(path string) InventoryProg {
 	}
 }
 
-func (p *InventoryProg) List(limit, offset *uint32, sortBy string, orderBy string, filter string, fields []string) ([]byte, error) {
+func (p *InventoryProg) List(limit, offset *uint32, sortBy string, orderBy string, filter string, fields []string) (PagedResponse, error) {
 	args := []string{"list", "--long", "--json"}
 
 	if limit != nil {
@@ -40,11 +40,24 @@ func (p *InventoryProg) List(limit, offset *uint32, sortBy string, orderBy strin
 	}
 
 	cmd := exec.Command(p.path, args...)
-	return cmd.Output()
+	output, err := cmd.Output()
+	if err != nil {
+		return PagedResponse{}, fmt.Errorf("list: failed to run list command: %w", err)
+	}
+	var paged PagedResponse
+	err = json.Unmarshal(output, &paged)
+	if err != nil {
+		return PagedResponse{}, fmt.Errorf("list: failed to unmarshal list data into paging response: %w", err)
+	}
+	return paged, nil
 }
 
-func (p *InventoryProg) Add(itemData []byte) (InventoryItem, error) {
-	cmd := exec.Command(p.path, "add", "--json", "--input", string(itemData))
+func (p *InventoryProg) Add(itemData InventoryItem) (InventoryItem, error) {
+	data, err := json.Marshal(itemData)
+	if err != nil {
+		return InventoryItem{}, fmt.Errorf("add item: failed to marshall item data: %w", err)
+	}
+	cmd := exec.Command(p.path, "add", "--json", "--input", string(data))
 	output, err := cmd.Output()
 	if err != nil {
 		return InventoryItem{}, fmt.Errorf("add item: failed to run command: %w", err)
@@ -71,8 +84,12 @@ func (p *InventoryProg) Delete(id string) (GenericProgramResponse, error) {
 	return response, nil
 }
 
-func (p *InventoryProg) Edit(id string, itemData []byte) (GenericProgramResponse, error) {
-	cmd := exec.Command(p.path, "edit", id, "--input", string(itemData), "--json")
+func (p *InventoryProg) Edit(id string, itemData EditItemRequest) (GenericProgramResponse, error) {
+	data, err := json.Marshal(itemData)
+	if err != nil {
+		return GenericProgramResponse{}, fmt.Errorf("edit item: failed to marshall item data: %w", err)
+	}
+	cmd := exec.Command(p.path, "edit", id, "--input", string(data), "--json")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return GenericProgramResponse{}, fmt.Errorf("edit item: failed to run edit command: %w", err)

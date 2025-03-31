@@ -72,10 +72,14 @@ func handleItems(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Set the content type header
-	w.Header().Set("Content-Type", "application/json")
 
 	// Write the raw output directly to the response
-	w.Write(output)
+	bytes, err := json.Marshal(output)
+	if err != nil {
+		http.Error(w, "Failed to decode inventory manager data: "+err.Error(), http.StatusInternalServerError)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(bytes)
 }
 
 func handleAddItem(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +89,7 @@ func handleAddItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Read the JSON body
-	var itemData json.RawMessage
+	var itemData inventory_shared.InventoryItem
 	if err := json.NewDecoder(r.Body).Decode(&itemData); err != nil {
 		http.Error(w, "Failed to parse JSON: "+err.Error(), http.StatusBadRequest)
 		return
@@ -127,15 +131,8 @@ func handleEditItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert the edit request to JSON
-	editJSON, err := json.Marshal(editReq)
-	if err != nil {
-		http.Error(w, "Error creating edit request", http.StatusInternalServerError)
-		return
-	}
-
 	// Execute the edit command
-	output, err := prog.Edit(itemID, editJSON)
+	output, err := prog.Edit(itemID, editReq)
 	if err != nil {
 		log.Printf("Error executing edit command: Output: %s", err.Error())
 		http.Error(w, "Error editing item", http.StatusInternalServerError)
