@@ -2,10 +2,23 @@ package inventory_shared
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
 )
+
+var FIELDS_ARR = []string{
+	"Name",
+	"AcquiredDate",
+	"PurchaseCurrency",
+	"PurchasePrice",
+	"ReceivedFrom",
+	"SerialNumber",
+	"PurchaseReference",
+	"Notes",
+	"Extra",
+}
 
 type InventoryProg struct {
 	path string
@@ -15,6 +28,17 @@ func NewInventoryProg(path string) InventoryProg {
 	return InventoryProg{
 		path: path,
 	}
+}
+
+func (p *InventoryProg) Test() error {
+	if len(p.path) == 0 {
+		return errors.New("prrogram path is invalid: no path specified")
+	}
+	_, err := p.List(nil, nil, "", "", "", []string{})
+	if err != nil {
+		return fmt.Errorf("program was not able to be run: %w", err)
+	}
+	return nil
 }
 
 func (p *InventoryProg) List(limit, offset *uint32, sortBy string, orderBy string, filter string, fields []string) (PagedResponse, error) {
