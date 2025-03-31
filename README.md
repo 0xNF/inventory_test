@@ -8,8 +8,8 @@ This project is an experiment in using various LLMs with MCP servers to code som
 
 ## This project comes with an MCP server as well
 
-<img src="docs/github/mcp_query.png" height=600>
-<img src="docs/github/mcp_query.png" height=600>
+<img src="docs/github/mcp_query.png" height=300>
+<img src="docs/github/mcp_query.png" height=300>
 
 
 
@@ -23,7 +23,9 @@ This project is an experiment in using various LLMs with MCP servers to code som
   * Frontend
     * Plain JS/HTML/CSS AJAX app that posts responses to and from the Server
 * MCP Server
-  * Separate standlone server that uses the Web Server to interact with the Rust CLI for providing LLM tools 
+  * Separate standlone server that uses the CLI for providing LLM tools 
+* Shared
+  * A go module that contains common items between the MCP server and the Web server, for interfacing wit the CLI
 
 
 
@@ -45,3 +47,11 @@ MCP Servers used are:
 Halfway through, the Git MCP server was added to do automatic commits.
 
 The SQLite schema was made before this project became an MCP/LLM demo, but everything around it including the Rust CLI, the Go server and the HTML app came from the vibe coding.
+
+### Interventions
+
+Unfortunately, Vibe Coding got 80% of the way there but was not able to complete some critical parts of the project. 
+* The `--filter` command for instnce, proved almost impossible for the models to implement correctly, although it got there in the end after some substantial hand-holding.
+* The llms would often overwrite entire files with just a snippet, instead of the full file contents, resulting in lots of build errors. Having a decent git commit history was helpful to revert these changes.
+* *SQL injection was a big problem -- the model could not be made to understand and fix it's own injection errors. Intervention had to happen here as well, with some manual overwrtiing. 
+* The models have memory issues: They would switch to python semi-randomly, and forget what directories and files it was working with, despite being reminded only a handful of messages ago. 
