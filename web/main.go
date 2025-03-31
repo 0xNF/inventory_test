@@ -3,103 +3,16 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"inventory_shared"
 	"log"
 	"net/http"
-	"os/exec"
 	"strings"
 )
 
-type InventoryItem struct {
-	ID                string `json:"id"`
-	Name              string `json:"name"`
-	AcquiredDate      string `json:"acquired_date,omitempty"`
-	PurchasePrice     int64  `json:"purchase_price,omitempty"`
-	PurchaseCurrency  string `json:"purchase_currency,omitempty"`
-	IsUsed            *bool  `json:"is_used,omitempty"`
-	ReceivedFrom      string `json:"received_from,omitempty"`
-	SerialNumber      string `json:"serial_number,omitempty"`
-	PurchaseReference string `json:"purchase_reference,omitempty"`
-	Notes             string `json:"notes,omitempty"`
-	Extra             string `json:"extra,omitempty"`
-	FuturePurchase    *bool  `json:"future_purchase,omitempty"`
-}
-
-type PagingInfo struct {
-	Limit  *uint32 `json:"limit,omitempty"`
-	Offset *uint32 `json:"offset,omitempty"`
-	Total  uint32  `json:"total"`
-}
-
-type PagedResponse struct {
-	Items  []InventoryItem `json:"items"`
-	Paging PagingInfo      `json:"paging"`
-}
-
-type InventoryProg struct {
-	path string
-}
-
-type EditItemRequest struct {
-	Name              string   `json:"name,omitempty"`
-	AcquiredDate      string   `json:"acquired_date,omitempty"`
-	PurchasePrice     *float64 `json:"purchase_price,omitempty"`
-	PurchaseCurrency  string   `json:"purchase_currency,omitempty"`
-	IsUsed            *bool    `json:"is_used,omitempty"`
-	ReceivedFrom      string   `json:"received_from,omitempty"`
-	SerialNumber      string   `json:"serial_number,omitempty"`
-	PurchaseReference string   `json:"purchase_reference,omitempty"`
-	Notes             string   `json:"notes,omitempty"`
-	Extra             string   `json:"extra,omitempty"`
-	FuturePurchase    *bool    `json:"future_purchase,omitempty"`
-}
-
-func (p *InventoryProg) list(limit, offset *uint32, sortBy string, orderBy string, filter string, fields []string) ([]byte, error) {
-	args := []string{"list", "--long", "--json"}
-
-	if limit != nil {
-		args = append(args, "--limit", fmt.Sprintf("%d", *limit))
-	}
-	if offset != nil {
-		args = append(args, "--offset", fmt.Sprintf("%d", *offset))
-	}
-	if sortBy != "" {
-		args = append(args, "--sort-by", sortBy)
-	}
-	if orderBy != "" {
-		args = append(args, "--order-by", orderBy)
-	}
-	if filter != "" {
-		args = append(args, "--filter", filter)
-		if len(fields) > 0 {
-			args = append(args, "--fields", strings.Join(fields, ","))
-		}
-	}
-
-	cmd := exec.Command(p.path, args...)
-	return cmd.Output()
-}
-
-func (p *InventoryProg) add(itemData []byte) ([]byte, error) {
-	cmd := exec.Command(p.path, "add", "--input", string(itemData))
-	return cmd.Output()
-}
-
-func (p *InventoryProg) delete(id string) ([]byte, error) {
-	cmd := exec.Command(p.path, "remove", id)
-	return cmd.Output()
-}
-
-func (p *InventoryProg) edit(id string, itemData []byte) ([]byte, error) {
-	cmd := exec.Command(p.path, "edit", id, "--input", string(itemData), "--json")
-	return cmd.CombinedOutput()
-}
-
-var prog InventoryProg
+var prog inventory_shared.InventoryProg
 
 func main() {
-	prog = InventoryProg{
-		path: "..\\rs\\target\\debug\\inventory_manager_rs.exe",
-	}
+	prog = inventory_shared.NewInventoryProg("..\\rs\\target\\debug\\inventory_manager_rs.exe")
 
 	// Serve static files from the static directory
 	fs := http.FileServer(http.Dir("./static"))
@@ -152,7 +65,7 @@ func handleItems(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Execute the inventory_manager_rs list command with pagination and filtering
-	output, err := prog.list(limit, offset, sortBy, orderBy, filter, fields)
+	output, err := prog.List(limit, offset, sortBy, orderBy, filter, fields)
 	if err != nil {
 		http.Error(w, "Failed to execute inventory manager: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -179,7 +92,7 @@ func handleAddItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Execute the inventory_manager_rs add command with JSON data
-	output, err := prog.add(itemData)
+	output, err := prog.Add(itemData)
 	if err != nil {
 		http.Error(w, "Failed to add item: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -187,9 +100,9 @@ func handleAddItem(w http.ResponseWriter, r *http.Request) {
 
 	// Return success response
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	json.NewEncoder(w).Encode(map[string]any{
 		"message": "Item added successfully",
-		"output":  string(output),
+		"output":  output,
 	})
 }
 
@@ -208,7 +121,7 @@ func handleEditItem(w http.ResponseWriter, r *http.Request) {
 	itemID := parts[len(parts)-1]
 
 	// Parse the request body
-	var editReq EditItemRequest
+	var editReq inventory_shared.EditItemRequest
 	if err := json.NewDecoder(r.Body).Decode(&editReq); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -222,16 +135,19 @@ func handleEditItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Execute the edit command
-	output, err := prog.edit(itemID, editJSON)
+	output, err := prog.Edit(itemID, editJSON)
 	if err != nil {
-		log.Printf("Error executing edit command: %v\nOutput: %s", err, output)
+		log.Printf("Error executing edit command: Output: %s", err.Error())
 		http.Error(w, "Error editing item", http.StatusInternalServerError)
 		return
 	}
 
 	// Set response headers and return output
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(output)
+	json.NewEncoder(w).Encode(map[string]any{
+		"message": "Item edited successfully",
+		"output":  output,
+	})
 }
 
 func handleRemoveItem(w http.ResponseWriter, r *http.Request) {
@@ -256,7 +172,7 @@ func handleRemoveItem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Execute the inventory_manager_rs remove command
-	output, err := prog.delete(data.ID)
+	output, err := prog.Delete(data.ID)
 	if err != nil {
 		http.Error(w, "Failed to remove item: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -264,8 +180,8 @@ func handleRemoveItem(w http.ResponseWriter, r *http.Request) {
 
 	// Return success response
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	json.NewEncoder(w).Encode(map[string]any{
 		"message": "Item removed successfully",
-		"output":  string(output),
+		"output":  output,
 	})
 }
