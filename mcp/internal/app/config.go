@@ -9,8 +9,8 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// Config holds configuration for how the MCP server should behave
-type Config struct {
+// WTServerConfig holds configuration for how the MCP server should behave
+type WTServerConfig struct {
 	// LogPath denotes where on the local filesystem the logging informastion file should be
 	LogPath *string `json:"LogPath"`
 	// MinLogLevel is the minimum level to log items to file for.
@@ -21,7 +21,7 @@ type Config struct {
 	WebServerAddress *string `json:"WebServerAddress"`
 }
 
-func (c Config) Compose(other Config) Config {
+func (c WTServerConfig) Compose(other WTServerConfig) WTServerConfig {
 	logger := wtlogger.GetLogger()
 	logger.Debug("Composing Config file...")
 	if c.LogPath == nil && other.LogPath != nil {
@@ -46,7 +46,7 @@ func (c Config) Compose(other Config) Config {
 // LogLevel returns the zerolog.Level version of the log level of the `MinLogLevel` string for this Conf object
 //
 // `nil`, or any other uninterpretable value is considered to be `zerolog.InfoLevel`
-func (conf *Config) LogLevel() zerolog.Level {
+func (conf *WTServerConfig) LogLevel() zerolog.Level {
 	level := conf.MinLogLevel
 	if level == nil {
 		return zerolog.InfoLevel
@@ -71,17 +71,17 @@ func (conf *Config) LogLevel() zerolog.Level {
 
 // IsDebugMode returns whether this configuration is launched in Debug Mode,
 // which is deinfed as the MinLogLevel being Debug or Trace (aka <= 0)
-func (conf *Config) IsDebugMode() bool {
+func (conf *WTServerConfig) IsDebugMode() bool {
 	return int8(conf.LogLevel()) <= 0
 }
 
-func ComposeConfig() Config {
+func ComposeConfig() WTServerConfig {
 	conf := NewConfig()
 
 	// iterate over the patsh in reverse order, composing as we go down
 	config_paths := xdg.GetConfigPaths()
 	for _, p := range config_paths {
-		var c Config
+		var c WTServerConfig
 		bytes, err := os.ReadFile(p)
 		if err == nil {
 			err = json.Unmarshal(bytes, &c)
@@ -95,6 +95,6 @@ func ComposeConfig() Config {
 }
 
 // NewConfig returns a new, blank configuration object
-func NewConfig() Config {
-	return Config{}
+func NewConfig() WTServerConfig {
+	return WTServerConfig{}
 }

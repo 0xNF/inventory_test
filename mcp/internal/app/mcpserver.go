@@ -1,6 +1,7 @@
 package mcpserver
 
 import (
+	"0xnfwtiventory/internal/mcp_logger"
 	"context"
 	"encoding/json"
 	"errors"
@@ -16,29 +17,55 @@ import (
 )
 
 type InventoryMCPServer struct {
-	Mcp     *server.MCPServer
-	Program *inventory_shared.InventoryProg
-	Config  Config
+	Mcp          *server.MCPServer
+	InventoryCLI *inventory_shared.InventoryProg
+	Config       WTServerConfig
 }
 
-func NewInventoryMCPServer() *server.MCPServer {
-	const serverName = "0xNFWT Inventory Manager"
-	const version = "0.1.0"
+func NewInventoryMCPServer(serverName string, version string) *server.MCPServer {
+	const resourceCanSubscribe = true
+	const resourceWillNotifyChanged = true
+	const promptWillNotifyChanged = true
 	/* This server supports a Resource (rs cli).
 	* It subscribes to changes to the resource (true),
 	* and does not support notifications about when the list of resources changes (false),
 	* because this server only has one resource, the cli.
 	 */
-	withRes := server.WithResourceCapabilities(true, false)
-
+	options := []server.ServerOption{
+		server.WithResourceCapabilities(resourceCanSubscribe, resourceWillNotifyChanged),
+		server.WithPromptCapabilities(promptWillNotifyChanged),
+		server.WithLogging(),
+	}
 	/** This STDIO server will log errors to this value */
-	// withErrorLogger := server.WithErrorLogger(log.Default())
-	s := server.NewMCPServer(serverName, version, withRes)
+	s := server.NewMCPServer(serverName, version, options...)
+
+	/** Register handler for the Logging Min Level function by MCP Clients */
+	s.AddNotificationHandler("logging/setLevel", func(ctx context.Context, notification mcp.JSONRPCNotification) {
+		handleSetMinimumLogLevel(ctx, notification, s)
+	})
 
 	return s
 }
 
-func LoadServer(config Config) (*InventoryMCPServer, error) {
+func handleSetMinimumLogLevel(ctx context.Context, notification mcp.JSONRPCNotification, s *server.MCPServer) {
+	// TODO(nf, 04/01/25): MCP-Go does not yet support easily responding to this Minimum Log Level message, refactor this method when it does
+	// including getting rid of the `s` parameter and its SendNotificationToClient responses
+	level, ok := notification.Params.AdditionalFields["level"].(string)
+	if !ok {
+		s.SendNotificationToClient(ctx, "-32602", map[string]any{"message": "level not supplied, or not a string"})
+		return
+	} else {
+		mcpLevel := mcp.LoggingLevel(level)
+		wtlogger.GetLogger().InfoWithFields("Setting Minimum Log Level", map[string]any{"level": mcpLevel})
+		err := mcp_logger.SetMinimumLogLevel(mcpLevel)
+		if err != nil {
+			s.SendNotificationToClient(ctx, "-32602", map[string]any{"message": fmt.Sprintf("invalid level: %v", err.Error())})
+			return
+		}
+	}
+}
+
+func LoadServer(serverName string, version string, config WTServerConfig) (*InventoryMCPServer, error) {
 	wtlogger.GetLogger().Info("Loading new MCP Server")
 	/* One or the other must be set, but not neither and not both */
 	if config.CLIPath == nil && config.WebServerAddress == nil {
@@ -59,7 +86,7 @@ func LoadServer(config Config) (*InventoryMCPServer, error) {
 	}
 
 	server := InventoryMCPServer{
-		NewInventoryMCPServer(),
+		NewInventoryMCPServer(serverName, version),
 		prog,
 		config,
 	}
@@ -167,7 +194,7 @@ func addToolListItems(s InventoryMCPServer) {
 			filter = fil
 		}
 
-		page, err := s.Program.List(limit, offset, sortBy, orderBy, filter, []string{})
+		page, err := s.InventoryCLI.List(limit, offset, sortBy, orderBy, filter, []string{})
 		if err != nil {
 			return nil, fmt.Errorf("list: failed to run list command: %w", err)
 		}
@@ -346,7 +373,7 @@ func addToolEditItem(s InventoryMCPServer) {
 			}
 		}
 
-		edited, err := s.Program.Edit(id, item)
+		edited, err := s.InventoryCLI.Edit(id, item)
 		if err != nil {
 			return nil, err
 		}
@@ -509,7 +536,7 @@ func addToolAddItem(s InventoryMCPServer) {
 			}
 		}
 
-		added, err := s.Program.Add(item)
+		added, err := s.InventoryCLI.Add(item)
 		if err != nil {
 			return nil, err
 		}

@@ -12,8 +12,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const serverName = "0xNFWT Inventory Manager"
+const serverVersion = "0.1.0"
+
 func main() {
 	rootCmd.Execute()
+}
+
+func setup() {
+	var keys = xdg.XDGKeys{
+		AppName:        "0xnfwt_inventory_mcp",
+		ConfigJsonName: "0xnfwt_inventory_mcp.json",
+	}
+	xdg.InitializeXDG(keys)
 }
 
 // rootCmd represents the base command when called without any subcommands
@@ -22,15 +33,10 @@ var rootCmd = &cobra.Command{
 	Short: "MCP server configuration",
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		var keys = xdg.XDGKeys{
-			AppName:        "0xnfwt_inventory_mcp",
-			ConfigJsonName: "0xnfwt_inventory_mcp.json",
-		}
-		xdg.InitializeXDG(keys)
-
-		var c mcpserver.Config
-
+		setup()
 		logger := wtlogger.GetLogger()
+
+		var c mcpserver.WTServerConfig
 
 		// Only set config values for flags that were actually provided
 		if cmd.Flags().Changed("log-path") {
@@ -54,7 +60,7 @@ var rootCmd = &cobra.Command{
 		c = c.Compose(mcpserver.ComposeConfig())
 		if c.LogPath == nil || *c.LogPath == "" {
 			lpaths := xdg.GetDataPaths()
-			logname := fmt.Sprintf("%s.log", keys.AppName)
+			logname := fmt.Sprintf("%s.log", xdg.XdgKeys.AppName)
 			if len(lpaths) == 0 {
 				c.LogPath = &logname
 			} else {
@@ -69,14 +75,14 @@ var rootCmd = &cobra.Command{
 		})
 
 		logger.Info("Loading server...")
-		loadServer, err := mcpserver.LoadServer(c)
+		loadServer, err := mcpserver.LoadServer(serverName, serverVersion, c)
 		if err != nil {
-			return fmt.Errorf("server error: %w\n", err)
+			return fmt.Errorf("server error: %w", err)
 		}
 		// Start the server
 		logger.Info("Starting WTInventory MCP Server")
 		if err := server.ServeStdio(loadServer.Mcp); err != nil {
-			return fmt.Errorf("server error: %w\n", err)
+			return fmt.Errorf("server error: %w", err)
 		}
 
 		return nil
