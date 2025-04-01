@@ -2,11 +2,13 @@ package main
 
 import (
 	mcpserver "0xnfwtiventory/internal/app"
+	"inventory_shared/wtlogger"
+	"inventory_shared/xdg"
+	"path"
+
 	"fmt"
-	"os"
 
 	"github.com/mark3labs/mcp-go/server"
-	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 )
 
@@ -14,14 +16,21 @@ func main() {
 	rootCmd.Execute()
 }
 
-var c mcpserver.Config
-var logger zerolog.Logger = zerolog.New(os.Stdout)
-
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "wtInventoryMcp",
 	Short: "MCP server configuration",
 	RunE: func(cmd *cobra.Command, args []string) error {
+
+		var keys = xdg.XDGKeys{
+			AppName:        "0xnfwt_inventory_mcp",
+			ConfigJsonName: "0xnfwt_inventory_mcp.json",
+		}
+		xdg.InitializeXDG(keys)
+
+		var c mcpserver.Config
+
+		logger := wtlogger.GetLogger()
 
 		// Only set config values for flags that were actually provided
 		if cmd.Flags().Changed("log-path") {
@@ -41,15 +50,31 @@ var rootCmd = &cobra.Command{
 			c.WebServerAddress = &webServerAddress
 		}
 
-		logger.Info().Msg("Loading configurations...")
-		cc := c.Compose(mcpserver.ComposeConfig())
-		logger.Info().Msg("Loading server...")
-		loadServer, err := mcpserver.LoadServer(cc)
+		logger.Info("Loading configurations...")
+		c = c.Compose(mcpserver.ComposeConfig())
+		if c.LogPath == nil || *c.LogPath == "" {
+			lpaths := xdg.GetDataPaths()
+			logname := fmt.Sprintf("%s.log", keys.AppName)
+			if len(lpaths) == 0 {
+				c.LogPath = &logname
+			} else {
+				p := path.Join(lpaths[0], logname)
+				c.LogPath = &p
+			}
+		}
+		logger.Initialize(wtlogger.LogConfig{
+			FilePath:    c.LogPath,
+			MinLogLevel: c.LogLevel(),
+			Console:     true,
+		})
+
+		logger.Info("Loading server...")
+		loadServer, err := mcpserver.LoadServer(c)
 		if err != nil {
 			return fmt.Errorf("server error: %w\n", err)
 		}
 		// Start the server
-		logger.Info().Msg("Starting WTInventory MCP Server")
+		logger.Info("Starting WTInventory MCP Server")
 		if err := server.ServeStdio(loadServer.Mcp); err != nil {
 			return fmt.Errorf("server error: %w\n", err)
 		}

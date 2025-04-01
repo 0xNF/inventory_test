@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"inventory_shared/wtlogger"
+
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -37,6 +39,7 @@ func NewInventoryMCPServer() *server.MCPServer {
 }
 
 func LoadServer(config Config) (*InventoryMCPServer, error) {
+	wtlogger.GetLogger().Info("Loading new MCP Server")
 	/* One or the other must be set, but not neither and not both */
 	if config.CLIPath == nil && config.WebServerAddress == nil {
 		return nil, errors.New("neither CLIPath nor WebServerAddress were set. Either one or the other must be specified")
@@ -46,6 +49,7 @@ func LoadServer(config Config) (*InventoryMCPServer, error) {
 
 	var prog *inventory_shared.InventoryProg
 	if config.CLIPath != nil {
+		wtlogger.GetLogger().Debug("CLI Path was set, will make a new CLI Program path, and test for correctness")
 		p := inventory_shared.NewInventoryProg(*config.CLIPath)
 		prog = &p
 		err := prog.Test()
@@ -59,8 +63,11 @@ func LoadServer(config Config) (*InventoryMCPServer, error) {
 		prog,
 		config,
 	}
+	wtlogger.GetLogger().Info("Adding AddItem tool")
 	addToolAddItem(server)
+	wtlogger.GetLogger().Info("Adding EditItem tool")
 	addToolEditItem(server)
+	wtlogger.GetLogger().Info("Adding ListItems tool")
 	addToolListItems(server)
 
 	return &server, nil
@@ -80,6 +87,8 @@ func addToolListItems(s InventoryMCPServer) {
 	)
 
 	s.Mcp.AddTool(listItemsTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		wtlogger.GetLogger().Info("Invoking ListItems tool")
+		wtlogger.GetLogger().DebugWithFields("ListItems params", map[string]any{"fields": request.Params})
 		var limit *uint32
 		var offset *uint32
 		var sortBy string
@@ -168,6 +177,8 @@ func addToolListItems(s InventoryMCPServer) {
 			return nil, fmt.Errorf("list: failed to marshal: %w", err)
 		}
 		s := string(m)
+
+		wtlogger.GetLogger().Info("ListItems success")
 		return mcp.NewToolResultText(s), nil
 
 	})
@@ -192,6 +203,9 @@ func addToolEditItem(s InventoryMCPServer) {
 	)
 
 	s.Mcp.AddTool(editItemTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		wtlogger.GetLogger().Info("Invoking EditItem tool")
+		wtlogger.GetLogger().DebugWithFields("EditItem params", map[string]any{"fields": request.Params})
+
 		var id string
 		item := inventory_shared.EditItemRequest{}
 		/* Parse Id */
@@ -342,6 +356,8 @@ func addToolEditItem(s InventoryMCPServer) {
 			return nil, fmt.Errorf("edit: failed to marshal: %w", err)
 		}
 		s := string(m)
+
+		wtlogger.GetLogger().Info("EditItem success")
 		return mcp.NewToolResultText(s), nil
 	})
 }
@@ -364,6 +380,8 @@ func addToolAddItem(s InventoryMCPServer) {
 	)
 
 	s.Mcp.AddTool(addItemTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		wtlogger.GetLogger().Info("Invoking AddItem tool")
+		wtlogger.GetLogger().DebugWithFields("AddItem params", map[string]any{"fields": request.Params})
 
 		item := inventory_shared.InventoryItem{}
 		/* Parse name */
@@ -501,6 +519,8 @@ func addToolAddItem(s InventoryMCPServer) {
 			return nil, fmt.Errorf("add: failed to marshal: %w", err)
 		}
 		s := string(m)
+
+		wtlogger.GetLogger().Info("AddItem success")
 		return mcp.NewToolResultText(s), nil
 	},
 	)
