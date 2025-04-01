@@ -42,11 +42,15 @@ Model switching happened when one timedout or produced token errors. By and larg
   
 MCP Servers used are:  
 * [Claude Filesystem](https://modelcontextprotocol.io/quickstart/user#2-add-the-filesystem-mcp-server)
-* [Cnosuke's SQLite](https://github.com/cnosuke/mcp-sqlite)
-
-Halfway through, the Git MCP server was added to do automatic commits.
-
+* [Claude's SQLite](https://github.com/cnosuke/mcp-sqlite)
+* [Git]
+  * Added halfway through, then disabled. Having automatic commits made it just a teensy bit harder to review and revert changes easily.
+* [GitHub]
+  * Tried to add this, but it kept failing with unclear errors. Wanted to use it to read this repos issues to choose what to work on and fix, but maybe another time.
+* 
 The SQLite schema was made before this project became an MCP/LLM demo, but everything around it including the Rust CLI, the Go server and the HTML app came from the vibe coding.
+
+The MCP server was made by hand.
 
 ### Interventions
 
