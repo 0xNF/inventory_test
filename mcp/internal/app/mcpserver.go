@@ -111,12 +111,17 @@ func AddPromptQueryByName(s InventoryMCPServer) {
 	logger := mcp_logger.GetLogger(s.Mcp, nil)
 	promptName := "inventoryQueryByName"
 	promptDescription := "Using the information in the inventory db, returns any items that have a matching or similar name"
-	prompt := mcp.NewPrompt(promptName, mcp.WithPromptDescription(promptDescription))
+
+	const promptArgName = "name"
+	prompt := mcp.NewPrompt(promptName, mcp.WithPromptDescription(promptDescription), mcp.WithArgument(promptArgName,
+		mcp.ArgumentDescription("The name of the item to look for in the inventory"),
+		mcp.RequiredArgument(),
+	))
 
 	s.Mcp.AddPrompt(prompt, func(ctx context.Context, request mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
 		logger.Info(ctx, fmt.Sprintf("Invoking %s Prompt", promptName))
 
-		name := strings.TrimSpace(request.Params.Arguments["name"])
+		name := strings.TrimSpace(request.Params.Arguments[promptArgName])
 		if len(name) == 0 {
 			return nil, errors.New("promptQuery: name not supplied, or was empty")
 		}
