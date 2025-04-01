@@ -26,11 +26,7 @@ func NewInventoryMCPServer(serverName string, version string) *server.MCPServer 
 	const resourceCanSubscribe = true
 	const resourceWillNotifyChanged = true
 	const promptWillNotifyChanged = true
-	/* This server supports a Resource (rs cli).
-	* It subscribes to changes to the resource (true),
-	* and does not support notifications about when the list of resources changes (false),
-	* because this server only has one resource, the cli.
-	 */
+
 	options := []server.ServerOption{
 		server.WithResourceCapabilities(resourceCanSubscribe, resourceWillNotifyChanged),
 		server.WithPromptCapabilities(promptWillNotifyChanged),
@@ -56,7 +52,7 @@ func handleSetMinimumLogLevel(ctx context.Context, notification mcp.JSONRPCNotif
 		return
 	} else {
 		mcpLevel := mcp.LoggingLevel(level)
-		wtlogger.GetLogger().InfoWithFields("Setting Minimum Log Level", map[string]any{"level": mcpLevel})
+		mcp_logger.GetLogger(s, nil).InfoWithFields(ctx, "Setting Minimum Log Level", map[string]any{"level": mcpLevel})
 		err := mcp_logger.SetMinimumLogLevel(mcpLevel)
 		if err != nil {
 			s.SendNotificationToClient(ctx, "-32602", map[string]any{"message": fmt.Sprintf("invalid level: %v", err.Error())})
@@ -90,6 +86,9 @@ func LoadServer(serverName string, version string, config WTServerConfig) (*Inve
 		prog,
 		config,
 	}
+
+	/* Add Tools */
+	mcp_logger.GetLogger(server.Mcp, nil)
 	wtlogger.GetLogger().Info("Adding AddItem tool")
 	addToolAddItem(server)
 	wtlogger.GetLogger().Info("Adding EditItem tool")
@@ -97,10 +96,74 @@ func LoadServer(serverName string, version string, config WTServerConfig) (*Inve
 	wtlogger.GetLogger().Info("Adding ListItems tool")
 	addToolListItems(server)
 
+	/* Add Prompts */
+	wtlogger.GetLogger().Info("Adding Upgrades prompt")
+	AddPromptUpgrades(server)
+	wtlogger.GetLogger().Info("Adding Query By Name prompt")
+	AddPromptQueryByName(server)
+
+	/* Add Resources */
+
 	return &server, nil
 }
 
+func AddPromptQueryByName(s InventoryMCPServer) {
+	logger := mcp_logger.GetLogger(s.Mcp, nil)
+	promptName := "inventoryQueryByName"
+	promptDescription := "Using the information in the inventory db, returns any items that have a matching or similar name"
+	prompt := mcp.NewPrompt(promptName, mcp.WithPromptDescription(promptDescription))
+
+	s.Mcp.AddPrompt(prompt, func(ctx context.Context, request mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+		logger.Info(ctx, fmt.Sprintf("Invoking %s Prompt", promptName))
+
+		name := strings.TrimSpace(request.Params.Arguments["name"])
+		if len(name) == 0 {
+			return nil, errors.New("promptQuery: name not supplied, or was empty")
+		}
+
+		return &mcp.GetPromptResult{
+			Description: promptDescription,
+			Messages: []mcp.PromptMessage{
+				{
+					Role: mcp.RoleUser,
+					Content: mcp.TextContent{
+						Type: "text",
+						Text: fmt.Sprintf("Find all items in my inventory with a name like '%s'", name),
+					},
+				},
+			},
+		}, nil
+	})
+
+}
+
+func AddPromptUpgrades(s InventoryMCPServer) {
+	logger := mcp_logger.GetLogger(s.Mcp, nil)
+	promptName := "inventorySuggestedUpgrades"
+	promptDescription := "Using the information in the inventory db, asks for items that could be upgraded, either because some items are old, or broken, or slow."
+
+	prompt := mcp.NewPrompt(promptName, mcp.WithPromptDescription(promptDescription))
+
+	s.Mcp.AddPrompt(prompt, func(ctx context.Context, request mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+		logger.Info(ctx, fmt.Sprintf("Invoking %s Prompt", promptName))
+
+		return &mcp.GetPromptResult{
+			Description: promptDescription,
+			Messages: []mcp.PromptMessage{
+				{
+					Role: mcp.RoleUser,
+					Content: mcp.TextContent{
+						Type: "text",
+						Text: "From my inventory, what items should be considered for upgrading or retirement?",
+					},
+				},
+			},
+		}, nil
+	})
+}
+
 func addToolListItems(s InventoryMCPServer) {
+	logger := mcp_logger.GetLogger(s.Mcp, nil)
 	toolName := "listInventoryItems"
 	toolDescription := "Returns a paged list of inventory item. If a filter is supplied, only items matching the filter are returned. Otherwise, it lists all items. The paging can be controlled with the limit and offset fields."
 	listItemsTool := mcp.NewTool(
@@ -114,8 +177,8 @@ func addToolListItems(s InventoryMCPServer) {
 	)
 
 	s.Mcp.AddTool(listItemsTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		wtlogger.GetLogger().Info("Invoking ListItems tool")
-		wtlogger.GetLogger().DebugWithFields("ListItems params", map[string]any{"fields": request.Params})
+		logger.Info(ctx, fmt.Sprintf("Invoking %s tool", toolName))
+		logger.DebugWithFields(ctx, "ListItems params", map[string]any{"fields": request.Params})
 		var limit *uint32
 		var offset *uint32
 		var sortBy string
@@ -205,13 +268,14 @@ func addToolListItems(s InventoryMCPServer) {
 		}
 		s := string(m)
 
-		wtlogger.GetLogger().Info("ListItems success")
+		logger.Info(ctx, "ListItems success")
 		return mcp.NewToolResultText(s), nil
 
 	})
 }
 
 func addToolEditItem(s InventoryMCPServer) {
+	logger := mcp_logger.GetLogger(s.Mcp, nil)
 	toolName := "editInventoryItem"
 	toolDescription := "Edits an existing inventory item with the supplied fields. Only Id is required, everything else is optional."
 	editItemTool := mcp.NewTool(
@@ -230,8 +294,8 @@ func addToolEditItem(s InventoryMCPServer) {
 	)
 
 	s.Mcp.AddTool(editItemTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		wtlogger.GetLogger().Info("Invoking EditItem tool")
-		wtlogger.GetLogger().DebugWithFields("EditItem params", map[string]any{"fields": request.Params})
+		logger.Info(ctx, fmt.Sprintf("Invoking %s tool", toolName))
+		logger.DebugWithFields(ctx, "EditItem params", map[string]any{"fields": request.Params})
 
 		var id string
 		item := inventory_shared.EditItemRequest{}
@@ -384,12 +448,13 @@ func addToolEditItem(s InventoryMCPServer) {
 		}
 		s := string(m)
 
-		wtlogger.GetLogger().Info("EditItem success")
+		logger.Info(ctx, "EditItem success")
 		return mcp.NewToolResultText(s), nil
 	})
 }
 
 func addToolAddItem(s InventoryMCPServer) {
+	logger := mcp_logger.GetLogger(s.Mcp, nil)
 	toolName := "addInventoryItem"
 	toolDescription := "Registers a new item to be added to the inventory database"
 	addItemTool := mcp.NewTool(
@@ -407,8 +472,8 @@ func addToolAddItem(s InventoryMCPServer) {
 	)
 
 	s.Mcp.AddTool(addItemTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		wtlogger.GetLogger().Info("Invoking AddItem tool")
-		wtlogger.GetLogger().DebugWithFields("AddItem params", map[string]any{"fields": request.Params})
+		logger.Info(ctx, fmt.Sprintf("Invoking %s tool", toolName))
+		logger.DebugWithFields(ctx, "AddItem params", map[string]any{"fields": request.Params})
 
 		item := inventory_shared.InventoryItem{}
 		/* Parse name */
@@ -547,7 +612,7 @@ func addToolAddItem(s InventoryMCPServer) {
 		}
 		s := string(m)
 
-		wtlogger.GetLogger().Info("AddItem success")
+		logger.Info(ctx, "AddItem success")
 		return mcp.NewToolResultText(s), nil
 	},
 	)
