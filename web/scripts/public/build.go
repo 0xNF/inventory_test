@@ -97,7 +97,9 @@ func main() {
 
 	// Execute go build command
 	printColored(colorGreen, "Building project...\n")
-	cmd := exec.Command("go", "build", "-ldflags", ldflags, "-o", outputPath, *mainPath)
+	cmd := exec.Command("go", "build", "-trimpath", "-ldflags", ldflags, "-o", outputPath, *mainPath)
+	/* CGO_ENABLED = 0, combined with -trimpath, makes reproducible builds */
+	cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
 	cmd.Dir = projectDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
