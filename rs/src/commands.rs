@@ -429,7 +429,7 @@ pub(crate) fn add_inventory_item_from_json(
             Id, Name, AcquiredDate, PurchasePrice, PurchaseCurrency, 
             IsUsed, ReceivedFrom, ModelNumber, SerialNumber, PurchaseReference, 
             Notes, Extra, FuturePurchase
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
         rusqlite::params![
             id,
             item.name,
@@ -544,7 +544,7 @@ pub(crate) fn add_inventory_item_interactive(
             Id, Name, AcquiredDate, PurchasePrice, PurchaseCurrency, 
             IsUsed, ReceivedFrom, ModelNumber, SerialNumber, PurchaseReference, 
             Notes, Extra, FuturePurchase
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
         rusqlite::params![
             id,
             name,

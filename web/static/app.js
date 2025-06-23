@@ -279,6 +279,8 @@ function renderInventoryItems() {
             purchase_price: parseFloat(document.getElementById('purchase-price').value) || null,
             purchase_currency: document.getElementById('purchase-currency').value || 'USD',
             purchase_reference: document.getElementById('purchase-ref').value || null,
+            model_number: document.getElementById('model-number').value || null,
+            serial_number: document.getElementById('serial-number').value || null,
             is_used: document.getElementById('is-used').checked,
             future_purchase: document.getElementById('future-purchase').checked,
             notes: document.getElementById('notes').value || null
@@ -324,6 +326,8 @@ function renderInventoryItems() {
                 purchase_price: item.purchase_price || null,
                 purchase_currency: item.purchase_currency || 'USD',
                 purchase_reference: item.purchase_reference || '',
+                model_number: item.model_number || '',
+                serial_number: item.serial_number || '',
                 is_used: item.is_used || false,
                 future_purchase: item.future_purchase || false,
                 notes: item.notes || ''
@@ -346,6 +350,8 @@ function renderInventoryItems() {
             }
             
             document.getElementById('edit-purchase-ref').value = originalItemValues.purchase_reference;
+            document.getElementById('edit-model-number').value = originalItemValues.model_number;
+            document.getElementById('edit-serial-number').value = originalItemValues.serial_number;
             document.getElementById('edit-is-used').checked = originalItemValues.is_used;
             document.getElementById('edit-future-purchase').checked = originalItemValues.future_purchase;
             document.getElementById('edit-notes').value = originalItemValues.notes;
@@ -428,6 +434,21 @@ function renderInventoryItems() {
         if (refField !== originalItemValues.purchase_reference) {
             changedFields.purchase_reference = refField || null;
             editedFields.add('purchase_reference');
+        }
+
+        // Check model_number field
+        const modelNumberField = document.getElementById('edit-model-number').value;
+        if (modelNumberField !== originalItemValues.model_number) {
+            changedFields.model_number = modelNumberField || null;
+            editedFields.add('model_number');
+        }
+
+        
+        // Check serial_number field
+        const serialNumberField = document.getElementById('edit-serial-number').value;
+        if (serialNumberField !== originalItemValues.serial_number) {
+            changedFields.serial_number = serialNumberField || null;
+            editedFields.add('serial_number');
         }
         
         // Check is_used checkbox
