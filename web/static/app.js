@@ -142,6 +142,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (item) {
                 document.getElementById('modal-purchase-ref').textContent = item.purchase_reference || 'N/A';
                 document.getElementById('modal-received-from').textContent = item.received_from || 'N/A';
+                document.getElementById('modal-model-number').textContent = item.model_number || 'N/A';
                 document.getElementById('modal-serial-number').textContent = item.serial_number || 'N/A';
                 modal.style.display = 'block';
             }
@@ -231,6 +232,7 @@ function renderInventoryItems() {
                 document.getElementById('modal-purchase-currency').textContent = item.purchase_currency || 'N/A';
                 document.getElementById('modal-purchase-ref').textContent = item.purchase_reference || 'N/A';
                 document.getElementById('modal-received-from').textContent = item.received_from || 'N/A';
+                document.getElementById('modal-model-number').textContent = item.model_number || 'N/A';
                 document.getElementById('modal-serial-number').textContent = item.serial_number || 'N/A';
                 document.getElementById('modal-is-used').textContent = item.is_used ? 'Yes' : 'No';
                 document.getElementById('modal-future-purchase').textContent = item.future_purchase ? 'Yes' : 'No';

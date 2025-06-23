@@ -13,6 +13,7 @@ pub const FIELDS_ARR: &[&str] = &[
     "PurchaseCurrency",
     "PurchasePrice",
     "ReceivedFrom",
+    "ModelNumber",
     "SerialNumber",
     "PurchaseReference",
     "Notes",
@@ -214,7 +215,7 @@ fn get_long_inventory(
     let mut query = format!(
         "SELECT 
             Id, Name, AcquiredDate, PurchasePrice, PurchaseCurrency, 
-            IsUsed, ReceivedFrom, SerialNumber, PurchaseReference, 
+            IsUsed, ReceivedFrom, ModelNumber, SerialNumber, PurchaseReference, 
             Notes, Extra, FuturePurchase 
         FROM inventory{}",
         where_clause
@@ -244,7 +245,7 @@ fn get_long_inventory(
     };
     let items_iter = stmt.query_map(params_from_iter(params.iter()), |row| {
         let is_used: Option<i64> = row.get(5)?;
-        let future_purchase: Option<i64> = row.get(11)?;
+        let future_purchase: Option<i64> = row.get(12)?;
 
         Ok(InventoryItem {
             id: row.get(0)?,
@@ -254,10 +255,11 @@ fn get_long_inventory(
             purchase_currency: row.get(4)?,
             is_used: is_used.map(|v| v != 0),
             received_from: row.get(6)?,
-            serial_number: row.get(7)?,
-            purchase_reference: row.get(8)?,
-            notes: row.get(9)?,
-            extra: row.get(10)?,
+            model_number: row.get(7)?,
+            serial_number: row.get(8)?,
+            purchase_reference: row.get(9)?,
+            notes: row.get(10)?,
+            extra: row.get(11)?,
             future_purchase: future_purchase.map(|v| v != 0),
         })
     })?;
@@ -320,6 +322,10 @@ fn print_long_inventory(response: &PagedResponse<InventoryItem>, json: bool) -> 
 
             if let Some(from) = &item.received_from {
                 println!("Received From: {}", from);
+            }
+
+            if let Some(model) = &item.model_number {
+                println!("Model Number: {}", model);
             }
 
             if let Some(serial) = &item.serial_number {
@@ -421,7 +427,7 @@ pub(crate) fn add_inventory_item_from_json(
     conn.execute(
         "INSERT INTO inventory (
             Id, Name, AcquiredDate, PurchasePrice, PurchaseCurrency, 
-            IsUsed, ReceivedFrom, SerialNumber, PurchaseReference, 
+            IsUsed, ReceivedFrom, ModelNumber, SerialNumber, PurchaseReference, 
             Notes, Extra, FuturePurchase
         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
         rusqlite::params![
@@ -432,6 +438,7 @@ pub(crate) fn add_inventory_item_from_json(
             purchase_currency,
             is_used as i64,
             item.received_from,
+            item.model_number,
             item.serial_number,
             item.purchase_reference,
             item.notes,
@@ -494,6 +501,14 @@ pub(crate) fn add_inventory_item_interactive(
         Some(received_from)
     };
 
+    // Model Number
+    let model_number = prompt_input("Model number", None, false);
+    let model_number = if model_number.is_empty() {
+        None
+    } else {
+        Some(model_number)
+    };
+
     // Serial Number
     let serial_number = prompt_input("Serial number", None, false);
     let serial_number = if serial_number.is_empty() {
@@ -527,7 +542,7 @@ pub(crate) fn add_inventory_item_interactive(
     conn.execute(
         "INSERT INTO inventory (
             Id, Name, AcquiredDate, PurchasePrice, PurchaseCurrency, 
-            IsUsed, ReceivedFrom, SerialNumber, PurchaseReference, 
+            IsUsed, ReceivedFrom, ModelNumber, SerialNumber, PurchaseReference, 
             Notes, Extra, FuturePurchase
         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
         rusqlite::params![
@@ -538,6 +553,7 @@ pub(crate) fn add_inventory_item_interactive(
             purchase_currency,
             is_used as i64,
             received_from,
+            model_number,
             serial_number,
             purchase_reference,
             notes,
@@ -693,6 +709,10 @@ pub(crate) fn edit_inventory_item(
     if updates.received_from.is_some() {
         set_clauses.push("ReceivedFrom = ?");
         params.push(Box::new(updates.received_from));
+    }
+    if updates.model_number.is_some() {
+        set_clauses.push("ModelNumber = ?");
+        params.push(Box::new(updates.model_number));
     }
     if updates.serial_number.is_some() {
         set_clauses.push("SerialNumber = ?");

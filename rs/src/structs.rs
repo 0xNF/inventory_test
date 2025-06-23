@@ -12,6 +12,7 @@ pub(crate) struct InventoryItem {
     pub(crate) purchase_currency: Option<String>,
     pub(crate) is_used: Option<bool>,
     pub(crate) received_from: Option<String>,
+    pub(crate) model_number: Option<String>,
     pub(crate) serial_number: Option<String>,
     pub(crate) purchase_reference: Option<String>,
     pub(crate) notes: Option<String>,
@@ -39,6 +40,8 @@ pub(crate) struct EditableItem {
     pub(crate) is_used: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) received_from: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) model_number: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) serial_number: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

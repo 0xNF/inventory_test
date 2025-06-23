@@ -293,7 +293,8 @@ func addToolEditItem(s InventoryMCPServer) {
 		mcp.WithNumber("purchase_price", mcp.Description("Price item was purchased for, in the currency defined by PurchaseCurrency. If PurchaseCurrency is not supplied, this value is assumed to be in Japanese Yen (JPY). Value may be null, but may not be negative or fractional. Only full integers are accepted. (i >= 0)"), mcp.Min(0)),
 		mcp.WithBoolean("is_used", mcp.Description("Whether this item is a Used Item, i.e., whether it was received second-hand or purchased via auction")),
 		mcp.WithString("received_from", mcp.Description("Source of acquisition for this item. If purchased from a website (e.g., 'Amazon.com'), then it is the website, if received from a friend, then it is the friends name (e.g., Takumi), etc."), mcp.MinLength(2)),
-		mcp.WithString("serial_number", mcp.Description("Serial or Model Number of the item, if available."), mcp.MinLength(1)),
+		mcp.WithString("model_number", mcp.Description("Model Number of the item, if available"), mcp.MinLength(1)),
+		mcp.WithString("serial_number", mcp.Description("Serial Number of the item, if available."), mcp.MinLength(1)),
 		mcp.WithString("purchase_reference", mcp.Description("If avaialble, a reference to a specific order number, or receipt code for this item"), mcp.MinLength(1)),
 		mcp.WithString("notes", mcp.Description("Free-form entry of any other information that relates to this item. Try to keep brief."), mcp.MinLength(1), mcp.MaxLength(1028)),
 	)
@@ -400,6 +401,20 @@ func addToolEditItem(s InventoryMCPServer) {
 			}
 		}
 
+		/* Parse Model Number */
+		raw_model := request.Params.Arguments["model_number"]
+		if raw_model != nil {
+			model, ok := raw_model.(string)
+			if ok {
+				if len(model) < 1 {
+					return nil, fmt.Errorf("edit: model_number must be at least 1 character long")
+				}
+				item.ModelNumber = model
+			} else {
+				return nil, fmt.Errorf("edit: model_number was supplied, but was not a string")
+			}
+		}
+
 		/* Parse Serial Number */
 		raw_serial := request.Params.Arguments["serial_number"]
 		if raw_serial != nil {
@@ -414,7 +429,7 @@ func addToolEditItem(s InventoryMCPServer) {
 			}
 		}
 
-		/* Parse Serial Number */
+		/* Parse Purchae Reference */
 		raw_reference := request.Params.Arguments["purchase_reference"]
 		if raw_reference != nil {
 			reference, ok := raw_reference.(string)
@@ -471,7 +486,8 @@ func addToolAddItem(s InventoryMCPServer) {
 		mcp.WithNumber("purchase_price", mcp.Description("Price item was purchased for, in the currency defined by PurchaseCurrency. If PurchaseCurrency is not supplied, this value is assumed to be in Japanese Yen (JPY). Value may be null, but may not be negative or fractional. Only full integers are accepted. (i >= 0)"), mcp.Min(0)),
 		mcp.WithBoolean("is_used", mcp.Description("Whether this item is a Used Item, i.e., whether it was received second-hand or purchased via auction")),
 		mcp.WithString("received_from", mcp.Description("Source of acquisition for this item. If purchased from a website (e.g., 'Amazon.com'), then it is the website, if received from a friend, then it is the friends name (e.g., Takumi), etc."), mcp.MinLength(2)),
-		mcp.WithString("serial_number", mcp.Description("Serial or Model Number of the item, if available."), mcp.MinLength(1)),
+		mcp.WithString("model_number", mcp.Description("Model Number of the item, if available."), mcp.MinLength(1)),
+		mcp.WithString("serial_number", mcp.Description("Serial Number of the item, if available."), mcp.MinLength(1)),
 		mcp.WithString("purchase_reference", mcp.Description("If avaialble, a reference to a specific order number, or receipt code for this item"), mcp.MinLength(1)),
 		mcp.WithString("notes", mcp.Description("Free-form entry of any other information that relates to this item. Try to keep brief."), mcp.MinLength(1), mcp.MaxLength(1028)),
 	)
@@ -564,6 +580,20 @@ func addToolAddItem(s InventoryMCPServer) {
 			}
 		}
 
+		/* Parse Model Number */
+		raw_model := request.Params.Arguments["model_number"]
+		if raw_model != nil {
+			model, ok := raw_model.(string)
+			if ok {
+				if len(model) < 1 {
+					return nil, fmt.Errorf("edit: model_number must be at least 1 character long")
+				}
+				item.ModelNumber = model
+			} else {
+				return nil, fmt.Errorf("edit: model_number was supplied, but was not a string")
+			}
+		}
+
 		/* Parse Serial Number */
 		raw_serial := request.Params.Arguments["serial_number"]
 		if raw_serial != nil {
@@ -578,7 +608,7 @@ func addToolAddItem(s InventoryMCPServer) {
 			}
 		}
 
-		/* Parse Serial Number */
+		/* Parse Purchase Reference */
 		raw_reference := request.Params.Arguments["purchase_reference"]
 		if raw_reference != nil {
 			reference, ok := raw_reference.(string)

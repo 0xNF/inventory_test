@@ -14,6 +14,7 @@ var FIELDS_ARR = []string{
 	"PurchaseCurrency",
 	"PurchasePrice",
 	"ReceivedFrom",
+	"ModelNumber",
 	"SerialNumber",
 	"PurchaseReference",
 	"Notes",
@@ -161,6 +162,7 @@ type InventoryItem struct {
 	PurchaseCurrency  string `json:"purchase_currency,omitempty"`
 	IsUsed            *bool  `json:"is_used,omitempty"`
 	ReceivedFrom      string `json:"received_from,omitempty"`
+	ModelNumber       string `json:"model_number,omitempty"`
 	SerialNumber      string `json:"serial_number,omitempty"`
 	PurchaseReference string `json:"purchase_reference,omitempty"`
 	Notes             string `json:"notes,omitempty"`
@@ -175,6 +177,7 @@ type EditItemRequest struct {
 	PurchaseCurrency  string   `json:"purchase_currency,omitempty"`
 	IsUsed            *bool    `json:"is_used,omitempty"`
 	ReceivedFrom      string   `json:"received_from,omitempty"`
+	ModelNumber       string   `json:"model_number,omitempty"`
 	SerialNumber      string   `json:"serial_number,omitempty"`
 	PurchaseReference string   `json:"purchase_reference,omitempty"`
 	Notes             string   `json:"notes,omitempty"`

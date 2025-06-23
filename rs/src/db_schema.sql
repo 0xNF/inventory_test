@@ -11,8 +11,7 @@ CREATE TABLE IF NOT EXISTS "Audit" (
 	"UserId"	TEXT,
 	"ClientInfo"	TEXT,
 	PRIMARY KEY("AuditId")
-) STRICT;
-
+);
 CREATE TABLE IF NOT EXISTS "Inventory" (
 	"Id"	TEXT NOT NULL,
 	"Name"	TEXT NOT NULL,
@@ -21,14 +20,14 @@ CREATE TABLE IF NOT EXISTS "Inventory" (
 	"PurchaseCurrency"	TEXT,
 	"IsUsed"	INTEGER DEFAULT 0,
 	"ReceivedFrom"	TEXT,
+	"ModelNumber"	TEXT,
 	"SerialNumber"	TEXT,
 	"PurchaseReference"	TEXT,
 	"Notes"	TEXT,
 	"Extra"	TEXT,
 	"FuturePurchase"	INTEGER DEFAULT 0,
 	PRIMARY KEY("Id")
-) STRICT;
-
+);
 CREATE TRIGGER inventory_after_delete
 AFTER DELETE ON Inventory
 BEGIN
